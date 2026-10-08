@@ -1,0 +1,95 @@
+# Runs the plugin's suite against every EmDash version we claim to support.
+#
+# Deliberately NOT named emdash-release.yml: `emdash-plugin release setup`
+# generates that file, and this must not collide with it.
+#
+# Three jobs, because they answer different questions:
+#
+#   tests     gating. Typecheck, manifest validation and the suite on the
+#             EmDash version the harness pins. This is the
+#             baseline that tells a harness breakage from a plugin regression.
+#   declared  gating, one job per version so they run in parallel. The
+#             versions inside our published range. A failure here is our
+#             regression and blocks the branch.
+#   latest    informational, never blocks. Runs against whatever EmDash is
+#             current on npm. EmDash ships a minor every 6-8 days and any minor
+#             may carry breaking changes, so this is the signal to widen the
+#             tested-up-to line in the README -- or not to.
+name: compat matrix
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Monday 06:00 UTC. EmDash releases land mid-week, so this reports on the
+    # previous week's minor before the next one arrives.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tests:
+    name: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          # The whole point of committing .nvmrc: one file decides the Node
+          # version here, on a laptop via fnm, and on Cloudflare Workers Builds.
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  declared:
+    name: EmDash ${{ matrix.emdash }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        emdash: [1.0.1]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: ./scripts/compat-matrix.sh --no-baseline "${{ matrix.emdash }}"
+
+  latest:
+    name: current EmDash (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - id: resolve
+        # dist-tags.latest, not the highest semver: emdash@1.0.0 exists on npm
+        # but was published 2026-04-27 and deprecated, and it outranks every
+        # real 0.x release in semver order.
+        #
+        # The harness is the current plugin-test too: one from before 0.2.6
+        # cannot start an EmDash 1.x host.
+        run: |
+          echo "version=$(npm view emdash dist-tags.latest)" >> "$GITHUB_OUTPUT"
+          echo "harness=$(npm view @emdash-cms/plugin-test dist-tags.latest)" >> "$GITHUB_OUTPUT"
+      - run: |
+          echo "current EmDash on npm: ${{ steps.resolve.outputs.version }} (plugin-test ${{ steps.resolve.outputs.harness }})"
+          ./scripts/compat-matrix.sh --no-baseline "${{ steps.resolve.outputs.version }}:${{ steps.resolve.outputs.harness }}"

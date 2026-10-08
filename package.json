@@ -1,0 +1,70 @@
+{
+	"name": "emdash-crowdsec",
+	"version": "0.1.0",
+	"private": true,
+	"description": "EmDash plugin: CrowdSec alerts, bans and top threats on the dashboard, read-only from the Local API.",
+	"keywords": [
+		"emdash",
+		"emdash-plugin",
+		"cms",
+		"plugin",
+		"crowdsec",
+		"security",
+		"dashboard"
+	],
+	"license": "MIT",
+	"author": "Shane Lord",
+	"homepage": "https://github.com/shanelord01/emdash-crowdsec#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/shanelord01/emdash-crowdsec.git"
+	},
+	"bugs": "https://github.com/shanelord01/emdash-crowdsec/issues",
+	"type": "module",
+	"main": "dist/index.mjs",
+	"exports": {
+		".": {
+			"import": "./dist/index.mjs",
+			"types": "./dist/index.d.mts"
+		},
+		"./sandbox": "./dist/plugin.mjs"
+	},
+	"files": [
+		"dist",
+		"emdash-plugin.jsonc"
+	],
+	"scripts": {
+		"validate": "emdash-plugin validate",
+		"build": "emdash-plugin build",
+		"dev": "emdash-plugin dev",
+		"typecheck": "tsc --noEmit",
+		"test": "emdash-plugin validate && vitest run",
+		"bundle": "emdash-plugin bundle",
+		"registry:login": "emdash-plugin login",
+		"registry:publish": "emdash-plugin publish",
+		"release:setup": "emdash-plugin release setup",
+		"prepublishOnly": "pnpm run build",
+		"changeset": "changeset",
+		"version-packages": "changeset version"
+	},
+	"engines": {
+		"node": ">=22.16"
+	},
+	"peerDependencies": {
+		"emdash": ">=1.0.1"
+	},
+	"devDependencies": {
+		"@changesets/cli": "^3.0.3",
+		"@emdash-cms/blocks": "1.0.1",
+		"@emdash-cms/plugin-cli": "0.13.1",
+		"@emdash-cms/plugin-test": "0.2.6",
+		"emdash": "^1.0.1",
+		"typescript": "^5.9.0",
+		"vitest": "^4.1.0",
+		"zod": "4.5.4"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"packageManager": "pnpm@11.15.1"
+}

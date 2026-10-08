@@ -1,0 +1,32 @@
+# esbuild needs its postinstall to link the platform binary (vitest depends
+# on it); workerd needs its own, because `@emdash-cms/plugin-test` runs the
+# plugin inside the real sandbox rather than a mock.
+#
+# The key is `allowBuilds`, not `onlyBuiltDependencies`. Measured on pnpm
+# 11.15.1 against a throwaway workspace: with `onlyBuiltDependencies: [esbuild]`
+# alone the install still ends in ERR_PNPM_IGNORED_BUILDS and no binary is
+# linked; with `allowBuilds: { esbuild: true }` the postinstall runs and
+# `esbuild --version` works. `emdash-plugin init` writes `allowBuilds` too,
+# which is the second witness. The old key is silently ignored, which is the
+# worst failure mode available, so it is gone rather than kept "just in case".
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# An ignored build is an error, not a warning. This repo already shipped one
+# workspace file whose build settings did nothing; that must not be quiet.
+strictDepBuilds: true
+dangerouslyAllowAllBuilds: false
+minimumReleaseAgeExclude:
+  - '@emdash-cms/admin@1.0.1'
+  - '@emdash-cms/auth@1.0.1'
+  - '@emdash-cms/blocks@1.0.1'
+  - '@emdash-cms/cloudflare@1.0.1'
+  - '@emdash-cms/gutenberg-to-portable-text@1.0.1'
+  - '@emdash-cms/plugin-cli@0.13.1'
+  - '@emdash-cms/plugin-test@0.2.6'
+  - '@emdash-cms/plugin-types@0.5.0'
+  - '@emdash-cms/registry-client@0.7.0'
+  - '@emdash-cms/registry-lexicons@0.7.0'
+  - '@emdash-cms/registry-verification@0.3.3'
+  - emdash@1.0.1

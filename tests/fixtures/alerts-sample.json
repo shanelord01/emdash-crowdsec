@@ -1,0 +1,2336 @@
+[
+ {
+  "capacity": 10,
+  "created_at": "2026-10-08T21:43:41Z",
+  "decisions": [
+   {
+    "duration": "3h41m8s",
+    "id": 1200226,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/appsec-bot-challenge-too-many-requests",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.10"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.12 Safari/537.36"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "fa64826a-b000-44dd-a0db-5f13216b225b"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:35.543761238 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "c1ff1db1-a734-451c-88f9-09c660754320"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-9"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:38.034512865 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.13 Safari/537.36 Edg/203.0.113.13"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "5ff9f9c3-d0bf-4ceb-80f0-846a809d7429"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-10"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:38.633062079 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "32018bb0-f1c1-4b0f-abc2-86a298d9611c"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-3"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:38.94979623 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.13 Safari/537.36 Edg/203.0.113.13"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "326d82c1-b22c-438b-bf05-05eb4371d1a5"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-8"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:39.260751258 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:132.0) Gecko/20100101 Firefox/132.0"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "bb8cb41e-2f22-49cb-9e67-0fda11cd0340"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-7"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:39.582943762 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "e7e1373b-78b2-4ea2-a2d9-2c871ec51bdd"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-6"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:39.908786031 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "291ae25a-6559-430a-aa68-25c62f8701d9"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-5"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:40.229574279 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.12 Mobile Safari/537.36"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "a882ec62-c6b3-42c0-83ca-61c3ec1bf0ac"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-2"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:40.566132618 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.13 Safari/537.36 Edg/203.0.113.13"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "5280dc90-ad19-42f4-aa7b-3238adc77fa9"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-1"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:40.880765666 +0000 UTC"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "215353"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "Josef Hrabe"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "CZ"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.11/24"
+     },
+     {
+      "key": "challenge_difficulty",
+      "value": "20"
+     },
+     {
+      "key": "challenge_event",
+      "value": "requested"
+     },
+     {
+      "key": "datasource_path",
+      "value": "appsec"
+     },
+     {
+      "key": "datasource_type",
+      "value": "appsec"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.12 Safari/537.36"
+     },
+     {
+      "key": "log_type",
+      "value": "appsec-challenge"
+     },
+     {
+      "key": "request_uuid",
+      "value": "6442c040-9dad-4ae7-9152-61cb38078b02"
+     },
+     {
+      "key": "service",
+      "value": "appsec"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.10"
+     },
+     {
+      "key": "target_host",
+      "value": "www.example.com"
+     },
+     {
+      "key": "target_uri",
+      "value": "/posts/example-post-4"
+     }
+    ],
+    "timestamp": "2026-10-08 21:43:41.251187469 +0000 UTC"
+   }
+  ],
+  "events_count": 11,
+  "id": 667,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "20s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.10 performed 'crowdsecurity/appsec-bot-challenge-too-many-requests' (11 events over 5.702606238s) at 2026-10-08 21:43:41.252016469 +0000 UTC",
+  "meta": [
+   {
+    "key": "target_uri",
+    "value": "[\"/\",\"/posts/example-post-9\",\"/posts/example-post-10\",\"/posts/example-post-3\",\"/posts/example-post-8\",\"/posts/example-post-7\",\"/posts/example-post-6\",\"/posts/example-post-5\",\"/posts/example-post-2\",\"/posts/example-post-1\",\"/posts/example-post-4\"]"
+   },
+   {
+    "key": "challenge_event",
+    "value": "[\"requested\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.12 Safari/537.36\",\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15\",\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.13 Safari/537.36 Edg/203.0.113.13\",\"Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:132.0) Gecko/20100101 Firefox/132.0\",\"Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0\",\"Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0\",\"Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.12 Mobile Safari/537.36\",\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.13 Safari/537.36 Edg/203.0.113.13\"]"
+   }
+  ],
+  "remediation": true,
+  "scenario": "crowdsecurity/appsec-bot-challenge-too-many-requests",
+  "scenario_hash": "65bd2d36794b4f4a6b60cee50f9f3c1bf7ca1d9d9510a8bab777b55ef0ee2d70",
+  "scenario_version": "0.2",
+  "simulated": false,
+  "source": {
+   "as_name": "Josef Hrabe",
+   "as_number": "215353",
+   "cn": "CZ",
+   "ip": "203.0.113.10",
+   "latitude": 48.9746,
+   "longitude": 14.4679,
+   "range": "203.0.113.11/24",
+   "scope": "Ip",
+   "value": "203.0.113.10"
+  },
+  "start_at": "2026-10-08T21:43:35Z",
+  "stop_at": "2026-10-08T21:43:41Z",
+  "uuid": "d70011f2-807b-497d-8640-b62fe0f7596f"
+ },
+ {
+  "capacity": 1,
+  "created_at": "2026-10-08T20:24:39Z",
+  "decisions": null,
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "rule_name",
+      "value": "crowdsecurity/vpatch-CVE-2025-29927"
+     },
+     {
+      "key": "message",
+      "value": "Next.js Middleware Bypass - (CVE-2025-29927)"
+     },
+     {
+      "key": "uri",
+      "value": "/configuration.js"
+     },
+     {
+      "key": "matched_zones",
+      "value": "REQUEST_HEADERS_NAMES.X-Middleware-Subrequest"
+     },
+     {
+      "key": "data"
+     },
+     {
+      "key": "target_fqdn",
+      "value": "www.example.com"
+     }
+    ],
+    "timestamp": "2026-10-08 20:24:38 +0000 UTC"
+   }
+  ],
+  "events_count": 1,
+  "id": 662,
+  "kind": "waf",
+  "labels": null,
+  "leakspeed": "",
+  "machine_id": "example-machine",
+  "message": "WAF block: crowdsecurity/vpatch-CVE-2025-29927 from 203.0.113.14 (203.0.113.15)",
+  "meta": [
+   {
+    "key": "target_uri",
+    "value": "[\"/configuration.js\"]"
+   },
+   {
+    "key": "msg",
+    "value": "[\"Next.js Middleware Bypass - (CVE-2025-29927)\"]"
+   },
+   {
+    "key": "matched_zones",
+    "value": "[\"REQUEST_HEADERS_NAMES.X-Middleware-Subrequest\"]"
+   },
+   {
+    "key": "name",
+    "value": "[\"crowdsecurity/vpatch-CVE-2025-29927\"]"
+   },
+   {
+    "key": "ja4h",
+    "value": "[\"ge11nr050000_84e766354a76_000000000000_000000000000\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"DuckAssistBot/1.1 (https://duckduckgo.com/duckassistbot)\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   }
+  ],
+  "scenario": "crowdsecurity/vpatch-CVE-2025-29927",
+  "scenario_hash": "957119648f747470f2100a2fb58ddaa44e8b850b23c63db8f62812abab0c2904",
+  "scenario_version": "0.3",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:38Z",
+  "stop_at": "2026-10-08T20:24:38Z",
+  "uuid": "19c592e5-d054-4442-8de2-928f1b3c1783"
+ },
+ {
+  "capacity": 0,
+  "created_at": "2026-10-08T20:24:38Z",
+  "decisions": null,
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/info.php"
+     },
+     {
+      "key": "http_status",
+      "value": "403"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; Meta-ExternalAgent/1.0; +https://developers.facebook.com/docs/sharing/webmasters/crawler)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "target_technology",
+      "value": "generic-phpinfo"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:37+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:37 +1100 +1100"
+   }
+  ],
+  "events_count": 1,
+  "id": 649,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "0s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.14 performed 'crowdsecurity/http-technology-probing' (1 events over 0s) at 2026-10-08 20:24:37.645126673 +0000 UTC",
+  "meta": [
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (compatible; Meta-ExternalAgent/1.0; +https://developers.facebook.com/docs/sharing/webmasters/crawler)\"]"
+   },
+   {
+    "key": "target_uri",
+    "value": "[\"/info.php\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   },
+   {
+    "key": "status",
+    "value": "[\"403\"]"
+   }
+  ],
+  "scenario": "crowdsecurity/http-technology-probing",
+  "scenario_hash": "fb981bab1c8cefebe9d8902fc496747040c43d98b2c0e60552dacc941e1dd773",
+  "scenario_version": "0.1",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:37Z",
+  "stop_at": "2026-10-08T20:24:37Z",
+  "uuid": "322f288e-ee34-4383-abe1-9f539460d112"
+ },
+ {
+  "capacity": 1,
+  "created_at": "2026-10-08T20:24:37Z",
+  "decisions": null,
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "rule_name",
+      "value": "crowdsecurity/vpatch-git-config"
+     },
+     {
+      "key": "message",
+      "value": "Detect access to .git files"
+     },
+     {
+      "key": "uri",
+      "value": "/.git/index"
+     },
+     {
+      "key": "matched_zones",
+      "value": "REQUEST_FILENAME"
+     },
+     {
+      "key": "data"
+     },
+     {
+      "key": "target_fqdn",
+      "value": "www.example.com"
+     }
+    ],
+    "timestamp": "2026-10-08 20:24:37 +0000 UTC"
+   }
+  ],
+  "events_count": 1,
+  "id": 646,
+  "kind": "waf",
+  "labels": null,
+  "leakspeed": "",
+  "machine_id": "example-machine",
+  "message": "WAF block: crowdsecurity/vpatch-git-config from 203.0.113.17 (203.0.113.15)",
+  "meta": [
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/121.0\"]"
+   },
+   {
+    "key": "target_uri",
+    "value": "[\"/.git/index\"]"
+   },
+   {
+    "key": "msg",
+    "value": "[\"Detect access to .git files\"]"
+   },
+   {
+    "key": "name",
+    "value": "[\"crowdsecurity/vpatch-git-config\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   },
+   {
+    "key": "ja4h",
+    "value": "[\"ge11nr040000_b1d8b30e744b_000000000000_000000000000\"]"
+   },
+   {
+    "key": "matched_zones",
+    "value": "[\"REQUEST_FILENAME\"]"
+   }
+  ],
+  "scenario": "crowdsecurity/vpatch-git-config",
+  "scenario_hash": "bbecbd81b916253467e28f0743bed9680c92d4a47ac4890e9819378a46982914",
+  "scenario_version": "0.5",
+  "simulated": false,
+  "source": {
+   "as_name": "Cyberzone S.A.",
+   "as_number": "209854",
+   "cn": "GB",
+   "ip": "203.0.113.17",
+   "latitude": 51.5081,
+   "longitude": -0.1278,
+   "range": "203.0.113.18/24",
+   "scope": "Ip",
+   "value": "203.0.113.17"
+  },
+  "start_at": "2026-10-08T20:24:37Z",
+  "stop_at": "2026-10-08T20:24:37Z",
+  "uuid": "99910510-d9e1-4bcd-9999-caede32c307f"
+ },
+ {
+  "capacity": 2,
+  "created_at": "2026-10-08T20:24:35Z",
+  "decisions": [
+   {
+    "duration": "2h22m2s",
+    "id": 1185224,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/http-admin-interface-probing",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.14"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/admin"
+     },
+     {
+      "key": "http_status",
+      "value": "403"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.19 Safari/537.36"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/admin/login"
+     },
+     {
+      "key": "http_status",
+      "value": "403"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.19 Safari/537.36"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/phpinfo.php"
+     },
+     {
+      "key": "http_status",
+      "value": "403"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.4; +https://openai.com/gptbot"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:35+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:35 +1100 +1100"
+   }
+  ],
+  "events_count": 3,
+  "id": 625,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "10s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.14 performed 'crowdsecurity/http-admin-interface-probing' (3 events over 5.86067697s) at 2026-10-08 20:24:35.364742483 +0000 UTC",
+  "meta": [
+   {
+    "key": "status",
+    "value": "[\"403\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/203.0.113.19 Safari/537.36\",\"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.4; +https://openai.com/gptbot\"]"
+   },
+   {
+    "key": "target_uri",
+    "value": "[\"/admin\",\"/admin/login\",\"/phpinfo.php\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   }
+  ],
+  "remediation": true,
+  "scenario": "crowdsecurity/http-admin-interface-probing",
+  "scenario_hash": "a8b0428674913507f3a356bba0e17541df731682dd2376a5495c4c76a60b8813",
+  "scenario_version": "0.5",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:29Z",
+  "stop_at": "2026-10-08T20:24:35Z",
+  "uuid": "73c1f00b-c8da-452b-8526-8c0bd8fc8c7b"
+ },
+ {
+  "capacity": 4,
+  "created_at": "2026-10-08T20:24:30Z",
+  "decisions": [
+   {
+    "duration": "2h21m58s",
+    "id": 1185222,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/http-sensitive-files",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.14"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/assets../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; Kimi-SearchBot/1.0; +https://kimi.ai/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/static../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexitybot)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/media../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "CCBot/2.0 (https://commoncrawl.org/faq/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/files../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; cohere-ai; +https://cohere.com/crawler)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:30+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:30 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/static//.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; MistralAI-User/1.0; +https://mistral.ai/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:30+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:30 +1100 +1100"
+   }
+  ],
+  "events_count": 5,
+  "id": 576,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "5s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.14 performed 'crowdsecurity/http-sensitive-files' (5 events over 675.234886ms) at 2026-10-08 20:24:30.470486901 +0000 UTC",
+  "meta": [
+   {
+    "key": "status",
+    "value": "[\"301\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (compatible; Kimi-SearchBot/1.0; +https://kimi.ai/)\",\"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexitybot)\",\"CCBot/2.0 (https://commoncrawl.org/faq/)\",\"Mozilla/5.0 (compatible; cohere-ai; +https://cohere.com/crawler)\",\"Mozilla/5.0 (compatible; MistralAI-User/1.0; +https://mistral.ai/)\"]"
+   },
+   {
+    "key": "target_uri",
+    "value": "[\"/assets../.env\",\"/static../.env\",\"/media../.env\",\"/files../.env\",\"/static//.env\"]"
+   }
+  ],
+  "remediation": true,
+  "scenario": "crowdsecurity/http-sensitive-files",
+  "scenario_hash": "cb798582ed9a3bd090d47234bef4ca2169982c44e356e88f101ec6b6a8424676",
+  "scenario_version": "0.4",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:29Z",
+  "stop_at": "2026-10-08T20:24:30Z",
+  "uuid": "52a2da98-78be-4b12-b86f-0473de101f65"
+ },
+ {
+  "capacity": 1,
+  "created_at": "2026-10-08T20:24:30Z",
+  "decisions": [
+   {
+    "duration": "2h21m57s",
+    "id": 1185221,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/http-bad-user-agent",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.14"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/media../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "CCBot/2.0 (https://commoncrawl.org/faq/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/media../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "403"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "CCBot/2.0 (https://commoncrawl.org/faq/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:30+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:30 +1100 +1100"
+   }
+  ],
+  "events_count": 2,
+  "id": 574,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "1m0s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.14 performed 'crowdsecurity/http-bad-user-agent' (2 events over 326.046522ms) at 2026-10-08 20:24:30.297807511 +0000 UTC",
+  "meta": [
+   {
+    "key": "target_uri",
+    "value": "[\"/media../.env\"]"
+   },
+   {
+    "key": "status",
+    "value": "[\"301\",\"403\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"CCBot/2.0 (https://commoncrawl.org/faq/)\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   }
+  ],
+  "remediation": true,
+  "scenario": "crowdsecurity/http-bad-user-agent",
+  "scenario_hash": "7ca405d1147762b1f488bc0f13575c5af8081499c8a5c2971d706e8b03493671",
+  "scenario_version": "1.2",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:29Z",
+  "stop_at": "2026-10-08T20:24:30Z",
+  "uuid": "cbffa4ba-ceac-4b57-b9c4-4645f2a1aa92"
+ },
+ {
+  "capacity": 3,
+  "created_at": "2026-10-08T20:24:30Z",
+  "decisions": [
+   {
+    "duration": "2h21m57s",
+    "id": 1185220,
+    "origin": "crowdsec",
+    "scenario": "crowdsecurity/http-path-traversal-probing",
+    "scope": "Ip",
+    "simulated": false,
+    "type": "ban",
+    "value": "203.0.113.14"
+   }
+  ],
+  "events": [
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/assets../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; Kimi-SearchBot/1.0; +https://kimi.ai/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/static../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexitybot)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/media../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "CCBot/2.0 (https://commoncrawl.org/faq/)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:29+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:29 +1100 +1100"
+   },
+   {
+    "meta": [
+     {
+      "key": "ASNNumber",
+      "value": "396982"
+     },
+     {
+      "key": "ASNOrg",
+      "value": "GOOGLE-CLOUD-PLATFORM"
+     },
+     {
+      "key": "IsInEU",
+      "value": "true"
+     },
+     {
+      "key": "IsoCode",
+      "value": "NL"
+     },
+     {
+      "key": "SourceRange",
+      "value": "203.0.113.16/15"
+     },
+     {
+      "key": "datasource_path",
+      "value": "/var/log/nginx/access.log"
+     },
+     {
+      "key": "datasource_type",
+      "value": "file"
+     },
+     {
+      "key": "http_args_len",
+      "value": "0"
+     },
+     {
+      "key": "http_path",
+      "value": "/files../.env"
+     },
+     {
+      "key": "http_status",
+      "value": "301"
+     },
+     {
+      "key": "http_user_agent",
+      "value": "Mozilla/5.0 (compatible; cohere-ai; +https://cohere.com/crawler)"
+     },
+     {
+      "key": "http_verb",
+      "value": "GET"
+     },
+     {
+      "key": "log_type",
+      "value": "http_access-log"
+     },
+     {
+      "key": "service",
+      "value": "http"
+     },
+     {
+      "key": "source_ip",
+      "value": "203.0.113.14"
+     },
+     {
+      "key": "timestamp",
+      "value": "2026-10-09T07:24:30+11:00"
+     }
+    ],
+    "timestamp": "2026-10-09 07:24:30 +1100 +1100"
+   }
+  ],
+  "events_count": 4,
+  "id": 573,
+  "kind": "crowdsec",
+  "labels": null,
+  "leakspeed": "10s",
+  "machine_id": "example-machine",
+  "message": "Ip 203.0.113.14 performed 'crowdsecurity/http-path-traversal-probing' (4 events over 501.713125ms) at 2026-10-08 20:24:30.296952871 +0000 UTC",
+  "meta": [
+   {
+    "key": "status",
+    "value": "[\"301\"]"
+   },
+   {
+    "key": "user_agent",
+    "value": "[\"Mozilla/5.0 (compatible; Kimi-SearchBot/1.0; +https://kimi.ai/)\",\"Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; Perplexity-User/1.0; +https://perplexity.ai/perplexitybot)\",\"CCBot/2.0 (https://commoncrawl.org/faq/)\",\"Mozilla/5.0 (compatible; cohere-ai; +https://cohere.com/crawler)\"]"
+   },
+   {
+    "key": "target_uri",
+    "value": "[\"/assets../.env\",\"/static../.env\",\"/media../.env\",\"/files../.env\"]"
+   },
+   {
+    "key": "method",
+    "value": "[\"GET\"]"
+   }
+  ],
+  "remediation": true,
+  "scenario": "crowdsecurity/http-path-traversal-probing",
+  "scenario_hash": "9d1b1e29018434aff77cec852ce7d0444e37b893995bd9bf46e7595f53ac5e6a",
+  "scenario_version": "0.4",
+  "simulated": false,
+  "source": {
+   "as_name": "GOOGLE-CLOUD-PLATFORM",
+   "as_number": "396982",
+   "cn": "NL",
+   "ip": "203.0.113.14",
+   "latitude": 53.2222,
+   "longitude": 6.5664,
+   "range": "203.0.113.16/15",
+   "scope": "Ip",
+   "value": "203.0.113.14"
+  },
+  "start_at": "2026-10-08T20:24:29Z",
+  "stop_at": "2026-10-08T20:24:30Z",
+  "uuid": "a814787b-dd83-4851-8462-e40debcb4fbd"
+ }
+]

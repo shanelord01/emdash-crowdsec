@@ -1,0 +1,162 @@
+{
+	"$schema": "./node_modules/@emdash-cms/plugin-cli/schemas/emdash-plugin.schema.json",
+
+	"slug": "emdash-crowdsec",
+	"publisher": "did:plc:efxj3t72atnke555mnnmywju",
+
+	"license": "MIT",
+	"author": { "name": "Shane Lord", "url": "https://github.com/shanelord01" },
+	"security": { "url": "https://github.com/shanelord01/emdash-crowdsec/security/advisories/new" },
+	"repo": "https://github.com/shanelord01/emdash-crowdsec",
+
+	// The only version check a user meets before installing. It carries a
+	// floor and deliberately no ceiling: EmDash ships a minor every week or
+	// so, and a ceiling would block correct installs. The tested range is in
+	// the README.
+	// Listing images live in `images/`, which the bundle does not pack. The
+	// banner is 1536x512, the 3:1 shape the registry shows, so link previews
+	// show it whole. The icon is 512x512 with transparent corners.
+	"release": {
+		"requires": { "env:emdash": ">=1.0.1" },
+		"artifacts": {
+			"icon": { "file": "./images/icon.webp" },
+			"banner": { "file": "./images/banner.webp" }
+		}
+	},
+
+	// Registry results and the Plugins list of a registry install show this.
+	"name": "CrowdSec",
+
+	// The registry refuses a description over 140 graphemes, which
+	// `emdash-plugin validate` does not check (tests/docs.test.ts does).
+	// Five keywords at most.
+	"description": "CrowdSec in the EmDash admin: alerts, bans and top threats from your Local API on the dashboard, with optional bans and unbans.",
+	"keywords": ["crowdsec", "security", "firewall", "waf", "dashboard"],
+
+	// Trust contract.
+	//
+	// `network:request:unrestricted`, with `allowedHosts` empty as that
+	// capability requires, because the CrowdSec Local API lives on a host
+	// the operator types into the settings, which no allow-list written here
+	// can name. The plugin requests two places: that LAPI URL, and, only
+	// while Allow changes is on, `cloudflare-dns.com` (DNS over HTTPS) to
+	// look up the site's and the LAPI's own addresses so a ban can never
+	// cover them.
+	//
+	// No content capabilities: the plugin reads and writes nothing of the
+	// site's content, users or media.
+	"capabilities": ["network:request:unrestricted"],
+	"allowedHosts": [],
+
+	"storage": {
+		// One row per alert, a few hundred bytes of LAPI's ~13 KB. The Alerts
+		// page filters on `kind` and `scenario` and orders by `startedAt`,
+		// and storage rejects a where or orderBy on an undeclared index.
+		// `startedAt` is also the retention prune's key.
+		"alerts": { "indexes": ["startedAt", "kind", "scenario", "ip"] },
+
+		// One row per local day: totals by kind, bans issued, the day's top
+		// 25 scenarios, countries, AS organisations, paths and addresses, and
+		// the alert ids already counted. Charts and top lists read these.
+		"days": { "indexes": ["date"] }
+	},
+
+	"admin": {
+		// The generated form is the only settings surface.
+		//
+		// `secret` is what triggers AES-GCM encryption with
+		// EMDASH_ENCRYPTION_KEY. Without that key, saving throws rather than
+		// storing the password in plain text, and the setup check says so.
+		"settingsSchema": {
+			"source": {
+				"type": "select",
+				"label": "Data source",
+				"default": "lapi",
+				"options": [
+					{ "value": "lapi", "label": "CrowdSec Local API" },
+					{ "value": "demo", "label": "Demo data (generated, not real alerts)" }
+				],
+				"description": "Demo data needs no CrowdSec and fills the pages with generated alerts. Switching clears the stored alerts."
+			},
+			"lapiUrl": {
+				"type": "string",
+				"label": "LAPI URL",
+				"description": "The Local API's base on a public HTTPS hostname, without /v1, for example https://www.example.com/crowdsec-lapi. EmDash refuses private addresses."
+			},
+			"machineId": {
+				"type": "string",
+				"label": "Machine ID",
+				"description": "A machine made for this plugin: sudo cscli machines add emdash-crowdsec --auto -f <file>. The file holds the ID and password."
+			},
+			"machinePassword": {
+				"type": "secret",
+				"label": "Machine password",
+				"description": "Saved encrypted with EMDASH_ENCRYPTION_KEY."
+			},
+			"syncInterval": {
+				"type": "select",
+				"label": "Sync every",
+				"default": "*/15 * * * *",
+				"options": [
+					{ "value": "*/15 * * * *", "label": "15 minutes" },
+					{ "value": "*/30 * * * *", "label": "30 minutes" },
+					{ "value": "0 * * * *", "label": "Hour" }
+				]
+			},
+			"retentionDays": {
+				"type": "number",
+				"label": "Keep alerts for",
+				"description": "Days. The first syncs read this far back from LAPI, newest first, and older rows are deleted every night. LAPI keeps its own alerts by its own rules.",
+				"default": 90,
+				"min": 7,
+				"max": 400
+			},
+			"includeSimulated": {
+				"type": "boolean",
+				"label": "Include simulated alerts",
+				"default": false,
+				"description": "Alerts from scenarios in simulation mode, which decide nothing. Changing this clears the stored alerts and reads them again."
+			},
+			"timeZone": {
+				"type": "string",
+				"label": "Time zone",
+				"default": "Australia/Sydney",
+				"description": "An IANA time zone name such as Australia/Sydney or Europe/Berlin. Days, charts and retention run in it. An unknown name pauses the sync until it is fixed, and the pages use Australia/Sydney meanwhile. Changing it to another valid zone clears the stored alerts and reads them again."
+			},
+			"allowChanges": {
+				"type": "boolean",
+				"label": "Allow changes",
+				"default": false,
+				"description": "Off: the plugin only reads. On: administrators can ban addresses, remove decisions and delete old alerts, on the Decisions and Alerts pages and through the MCP tools. The machine also needs write access through your proxy."
+			},
+			"protectedAddresses": {
+				"type": "string",
+				"label": "Protected addresses",
+				"multiline": true,
+				"description": "Addresses and ranges a ban must never cover, separated by commas or new lines: your server, your home, your office. Your own address, this site's and the LAPI host's are protected as well."
+			}
+		},
+
+		"pages": [
+			{ "path": "/security", "label": "Security", "icon": "shield" },
+			{ "path": "/security/alerts", "label": "Security alerts", "icon": "warning" },
+			{ "path": "/security/decisions", "label": "Security decisions", "icon": "prohibit" }
+		],
+		"widgets": [{ "id": "security", "title": "Security", "size": "half" }]
+	},
+
+	// The registry page's tabs. Profile-level: they carry across releases.
+	// Each file is capped at 20000 bytes and 2000 graphemes
+	// (tests/docs.test.ts checks both).
+	"sections": {
+		"description": { "file": "docs/registry/description.md" },
+		"installation": { "file": "docs/registry/installation.md" },
+		"faq": { "file": "docs/registry/faq.md" },
+		"changelog": { "file": "docs/registry/changelog.md" },
+		"security": { "file": "docs/registry/security.md" }
+	}
+
+	// No `hooks` and no `routes` here: the authored manifest rejects both.
+	// They live in src/plugin.ts and the build probes them into the wire
+	// manifest.
+}
