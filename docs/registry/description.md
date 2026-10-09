@@ -1,3 +1,5 @@
+An unofficial plugin. It is not affiliated with, endorsed by or supported by CrowdSec.
+
 CrowdSec in the EmDash admin, read from your CrowdSec Local API with a machine login of its own.
 
 **On the dashboard:** a CrowdSec card with the last 24 hours' alerts against the 24 before, the bans in force now, alerts by kind (WAF, bot challenge, behaviour) and the top scenarios.

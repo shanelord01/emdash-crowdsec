@@ -41,7 +41,7 @@
 	// The registry refuses a description over 140 graphemes, which
 	// `emdash-plugin validate` does not check (tests/docs.test.ts does).
 	// Five keywords at most.
-	"description": "CrowdSec in the EmDash admin: alerts, bans and top threats from your Local API on the dashboard, with optional bans and unbans.",
+	"description": "Unofficial CrowdSec plugin, not affiliated with CrowdSec: alerts, bans and top threats from your Local API in the EmDash admin.",
 	"keywords": ["crowdsec", "security", "firewall", "waf", "dashboard"],
 
 	// Trust contract.

@@ -1,5 +1,7 @@
 # CrowdSec for EmDash
 
+An unofficial plugin. It is not affiliated with, endorsed by or supported by CrowdSec.
+
 CrowdSec in the EmDash admin. A dashboard card, three admin pages and nine MCP tools show the alerts, bans and top threats your CrowdSec Local API (LAPI) records, and, if you turn it on, let administrators ban an address, lift a ban or delete an old alert.
 
 It is a sandboxed plugin: it runs in EmDash's plugin sandbox, reads LAPI over HTTPS with a machine login of its own, and keeps a compact copy of the alerts in plugin storage. It needs no content access and stores no LAPI token.
