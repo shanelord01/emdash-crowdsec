@@ -21,14 +21,16 @@
 		"artifacts": {
 			"icon": { "file": "./images/icon.webp" },
 			"banner": { "file": "./images/banner.webp" },
-			// Taken on a filler-data site ("Coastline Notes") with the Demo
-			// data source and documentation addresses, never a real one.
+			// Taken on a filler-data site ("Coastline Notes") with documentation
+			// addresses and invented names, from a throwaway build of the archived
+			// demo data source (branch archive/demo-data), never a real site.
 			"screenshots": [
 				{ "file": "./images/screenshot-1-alerts-by-day.webp" },
-				{ "file": "./images/screenshot-2-countries.webp" },
-				{ "file": "./images/screenshot-3-alerts.webp" },
-				{ "file": "./images/screenshot-4-decisions.webp" },
-				{ "file": "./images/screenshot-5-dashboard-card.webp" }
+				{ "file": "./images/screenshot-2-alerts-explorer.webp" },
+				{ "file": "./images/screenshot-3-traffic.webp" },
+				{ "file": "./images/screenshot-4-countries-engines.webp" },
+				{ "file": "./images/screenshot-5-decisions.webp" },
+				{ "file": "./images/screenshot-6-dashboard-card.webp" }
 			]
 		}
 	},
