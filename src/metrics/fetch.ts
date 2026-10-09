@@ -21,16 +21,16 @@ export async function fetchMetrics(fetch: FetchLike, url: string): Promise<Resul
 		});
 	} catch (error) {
 		const detail = error instanceof Error ? error.message : String(error);
-		if (/byte limit/i.test(detail)) return failure("tooLarge");
-		return failure("metricsUnreachable", { detail: detail.slice(0, 200) });
+		if (/byte limit/i.test(detail)) return failure("m7c");
+		return failure("m7e", { detail: detail.slice(0, 200) });
 	}
 	if (response.status >= 300 && response.status < 400) {
 		await response.body?.cancel();
 		return failure("redirected", { status: response.status });
 	}
-	if (response.status === 403) return failure("metricsRefused");
-	if (!response.ok) return failure("metricsHttp", { status: response.status });
+	if (response.status === 403) return failure("m7f");
+	if (!response.ok) return failure("m7g", { status: response.status });
 	const text = await response.text();
-	if (/^\s*</.test(text)) return failure("metricsNotPrometheus");
+	if (/^\s*</.test(text)) return failure("m7h");
 	return { ok: true, value: parsePrometheus(text, KEPT_SERIES) };
 }

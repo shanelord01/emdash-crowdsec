@@ -129,10 +129,10 @@ export async function resolveNames(fetch: FetchLike, names: string[], now: Date)
 					headers: { Accept: "application/dns-json", "User-Agent": USER_AGENT },
 					redirect: "manual",
 				});
-				if (!response.ok) return { ...failure("dnsFailed", { name, detail: `HTTP ${response.status}` }), requests };
+				if (!response.ok) return { ...failure("m7i", { name, detail: `HTTP ${response.status}` }), requests };
 				body = await response.json();
 			} catch (error) {
-				return { ...failure("dnsFailed", { name, detail: error instanceof Error ? error.message : String(error) }), requests };
+				return { ...failure("m7i", { name, detail: error instanceof Error ? error.message : String(error) }), requests };
 			}
 			const answers = (body as { Answer?: Array<{ type?: number; data?: unknown }> } | null)?.Answer ?? [];
 			for (const answer of answers) {
@@ -141,7 +141,7 @@ export async function resolveNames(fetch: FetchLike, names: string[], now: Date)
 				}
 			}
 		}
-		if (found.length === 0) return { ...failure("dnsEmpty", { name }), requests };
+		if (found.length === 0) return { ...failure("m7j", { name }), requests };
 		addresses[name] = [...new Set(found)];
 	}
 	return { ok: true, value: { at: now.toISOString(), key: names.join(","), addresses }, requests };

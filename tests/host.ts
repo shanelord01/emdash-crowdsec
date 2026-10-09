@@ -6,6 +6,7 @@ import type { AlertQuery, RawAlert } from "../src/lapi/types.js";
 import type { SyncState } from "../src/sync/scheduler.js";
 import { USER_AGENT } from "../src/version.js";
 import sample from "./fixtures/alerts-sample.json?raw";
+import { seedStore } from "./seed.js";
 
 /**
  * Fixtures for tests that run the plugin inside the runtime test host.
@@ -21,24 +22,26 @@ export function sampleAlerts(): RawAlert[] {
 	return JSON.parse(sample) as RawAlert[];
 }
 
-export async function newHost(source: "demo" | "lapi" = "demo", extra: Record<string, unknown> = {}) {
+export async function newHost(_source: "lapi" = "lapi", extra: Record<string, unknown> = {}) {
 	vi.stubEnv("EMDASH_ENCRYPTION_KEY", "emdash_enc_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 	const runtime = await createPluginRuntimeTestHost({ site: { url: SITE, locale: "en", trailingSlash: "never" } });
-	if (source === "lapi") {
-		const saved = await runtime.actions.plugin.updateSettings({
-			source: "lapi",
-			lapiUrl: LAPI,
-			machineId: "emdash-crowdsec",
-			machinePassword: "secret-password",
-			timeZone: ZONE,
-			...extra,
-		});
-		expect(saved).toMatchObject({ success: true });
-	} else {
-		await runtime.fixtures.plugin.setting("source", "demo");
-		await runtime.fixtures.plugin.setting("timeZone", ZONE);
-		for (const [key, value] of Object.entries(extra)) await runtime.fixtures.plugin.setting(key, value);
-	}
+	const saved = await runtime.actions.plugin.updateSettings({ ...hostSettings, ...extra });
+	expect(saved).toMatchObject({ success: true });
+	return runtime;
+}
+
+/** The settings `newHost` saves, before its extras. */
+export const hostSettings = { lapiUrl: LAPI, machineId: "emdash-crowdsec", machinePassword: "secret-password", timeZone: ZONE };
+
+/**
+ * A host whose store already holds `days` of generated alerts, as if the
+ * sync had read them (`tests/seed.ts`). Pages and tools that read storage
+ * work against it without a LAPI.
+ */
+export async function seededHost(extra: Record<string, unknown> = {}, days = 7) {
+	const runtime = await newHost("lapi", extra);
+	const now = new Date();
+	await seedStore(runtime, { ...hostSettings, ...extra }, now.getTime() - days * 86_400_000, now);
 	return runtime;
 }
 
@@ -76,8 +79,9 @@ export async function respondSearch(runtime: PluginRuntimeTestHost, query: (now:
 	return urls;
 }
 
+/** A stored state. One from 0.1.1 on has moved its alert rows into the log, unless the test says otherwise. */
 export async function setState(runtime: PluginRuntimeTestHost, state: SyncState) {
-	await runtime.fixtures.plugin.kv("sync.state", state);
+	await runtime.fixtures.plugin.kv("sync.state", { logMigrated: true, ...state });
 }
 
 export const tick = (runtime: PluginRuntimeTestHost, name = "sync") => () =>

@@ -9,7 +9,7 @@
  *   hourly buckets the sync keeps for 48 hours.
  * - Traffic (packets discarded, web requests, bot challenges) comes from
  *   the stored traffic days and, for 24 hours, the sampler's hourly
- *   differences. It shows once a metrics URL is set, or with demo data.
+ *   differences. It shows once a metrics URL is set.
  * - Active bans by source come from the engine's latest gauges.
  *
  * Top lists are sums of each day's top 25, so a value that never made a
@@ -23,7 +23,6 @@ import type { PluginContext } from "emdash/plugin";
 
 import { t, type Lang, type MessageKey } from "../i18n.js";
 import { discarded, ORIGIN_GROUPS, sumCounters, CHALLENGE_STAGES, type Counters, type OriginGroup } from "../metrics/sample.js";
-import type { SourceId } from "../settings.js";
 import { daysStore, trafficStore, BIND_LIMIT } from "../store/access.js";
 import { ranked, sumMaps, type DayRow, type TrafficDay } from "../store/rows.js";
 import { coveredSince, sumHours, type MetricsState, type SyncState } from "../sync/scheduler.js";
@@ -44,7 +43,7 @@ import {
 	type DailySeries,
 	type SecurityBlock,
 } from "./blocks.js";
-import { comparisonText, countryName, formatAge, formatBytes, formatCount, formatHour, formatShort, formatShortDay, trendOf } from "./format.js";
+import { comparisonText, countryName, engineLabel, formatAge, formatBytes, formatCount, formatHour, formatShort, formatShortDay, trendOf } from "./format.js";
 import { ALERTS_PATH, DECISIONS_PATH, PAGE_REFRESH, RANGE_ACTION, SETUP_ACTION } from "./ids.js";
 import { emptyReason, statusLine } from "./status.js";
 
@@ -66,14 +65,14 @@ export function rangeActionId(range: RangeDays): string {
 }
 
 /** The chart colours, by name, so the series line can say which is which. */
-const COLOUR_KEYS: MessageKey[] = ["colourBlue", "colourYellow", "colourPink", "colourPurple", "colourTeal", "colourOrange"];
+const COLOUR_KEYS: MessageKey[] = ["m1h", "m1i", "m1j", "m1k", "m1l", "m1m"];
 
 const ORIGIN_COLOUR: Record<OriginGroup, number> = { community: 0, detections: 1, manual: 2, other: 4 };
 const ORIGIN_LABEL: Record<OriginGroup, MessageKey> = {
-	community: "originCommunity",
-	detections: "originDetections",
-	manual: "originManual",
-	other: "originOther",
+	community: "m1n",
+	detections: "m1o",
+	manual: "m1p",
+	other: "m1q",
 };
 
 /** The line under a chart that names its series by colour. */
@@ -83,14 +82,15 @@ export function seriesLine(lang: Lang, items: Array<{ name: string; colour: numb
 
 export interface SecurityInput {
 	state: SyncState;
-	source: SourceId;
 	zone: string;
 	range: RangeDays;
 	/** Day rows for the range and the equal period before it (two local days for the 24-hour view). */
 	days: DayRow[];
 	traffic: TrafficDay[];
 	metrics: MetricsState | null;
-	/** True when a metrics URL is set or the data is demo data. */
+	/** The Engine names setting, for the alerts-by-engine chart. */
+	engineNames?: Record<string, string>;
+	/** True when a metrics URL is set. */
 	metricsOn: boolean;
 	now: Date;
 	lang: Lang;
@@ -135,75 +135,93 @@ export function renderSecurity(input: SecurityInput): SecurityBlock[] {
 	const out: SecurityBlock[] = [controls(range, lang)];
 
 	if (days.length === 0 && !state.lastSync && !input.metrics) {
-		out.push(empty({ title: t(lang, "noDataYet"), description: emptyReason(state, lang) }));
+		out.push(empty({ title: t(lang, "m0"), description: emptyReason(state, lang) }));
 		return out;
 	}
 
 	const view = range === 1 ? hourlyView(input) : dailyView(input, today);
 
 	out.push(stats([...view.alertStats, activeStat(input)]));
-	out.push(context(statusLine(state, input.source, now, lang, zone)));
+	out.push(context(statusLine(state, now, lang, zone)));
 
 	if (input.metricsOn) out.push(...trafficSection(input, view));
 
-	out.push(header(range === 1 ? t(lang, "alertsByHour") : t(lang, "alertsByDay")));
+	out.push(header(range === 1 ? t(lang, "m1d") : t(lang, "ml")));
 	const kinds: Array<[keyof DayRow & ("behaviour" | "waf" | "bot" | "manual"), MessageKey, number]> = [
-		["behaviour", "kindBehaviour", 0],
-		["waf", "kindWaf", 1],
-		["bot", "kindBot", 2],
-		["manual", "kindManual", 3],
+		["behaviour", "mb", 0],
+		["waf", "m9", 1],
+		["bot", "ma", 2],
+		["manual", "mc", 3],
 	];
 	const kindSeries = kinds.map(([key, label, colour]) => ({ name: t(lang, label), data: view.alertValues(key), colour: CHART_COLOURS[colour]! }));
 	out.push(dailyChart({ labels: view.labels, series: kindSeries, style: "bar", height: 280, blockId: "cs:chart:alerts" }));
 	out.push(seriesLine(lang, kinds.map(([, label, colour]) => ({ name: t(lang, label), colour }))));
 
-	out.push(header(range === 1 ? t(lang, "bansByHour") : t(lang, "bansByDay")));
+	out.push(header(range === 1 ? t(lang, "m1e") : t(lang, "mm")));
 	out.push(
 		dailyChart({
 			labels: view.labels,
-			series: [{ name: t(lang, "bansIssued"), data: view.alertValues("bans"), colour: CHART_COLOURS[4] }],
+			series: [{ name: t(lang, "mn"), data: view.alertValues("bans"), colour: CHART_COLOURS[4] }],
 			style: "bar",
 			height: 200,
 			blockId: "cs:chart:bans",
 		}),
 	);
-	out.push(seriesLine(lang, [{ name: t(lang, "bansIssued"), colour: 4 }]));
+	out.push(seriesLine(lang, [{ name: t(lang, "mn"), colour: 4 }]));
 
 	const inRange = view.topDays;
 	const country = countryName(lang);
 	const countries = ranked(sumMaps(inRange.map((d) => d.countries))).slice(0, TOP_ROWS);
-	out.push(header(t(lang, "whereFrom")));
+	out.push(header(t(lang, "m1f")));
 	if (countries.length > 0) {
 		out.push(
 			dailyChart({
 				labels: countries.map(([code]) => country(code)),
-				series: [{ name: t(lang, "colAlerts"), data: countries.map(([, n]) => n), colour: CHART_COLOURS[0] }],
+				series: [{ name: t(lang, "mh"), data: countries.map(([, n]) => n), colour: CHART_COLOURS[0] }],
 				style: "bar",
 				horizontal: true,
 				height: Math.max(160, countries.length * 28 + 48),
 				blockId: "cs:chart:countries",
 			}),
 		);
-		out.push(seriesLine(lang, [{ name: t(lang, "alertsByCountry"), colour: 0 }]));
+		out.push(seriesLine(lang, [{ name: t(lang, "m1g"), colour: 0 }]));
 	} else {
-		out.push(context(t(lang, "nothingRecorded")));
+		out.push(context(t(lang, "m1")));
+	}
+
+	// Alerts by the CrowdSec agent that raised them, when more than one did:
+	// a central LAPI hears from several hosts, and a single host sees no change.
+	const engines = ranked(sumMaps(inRange.map((d) => d.machines ?? {}))).slice(0, TOP_ROWS);
+	if (engines.length > 1) {
+		out.push(header(t(lang, "m2m")));
+		out.push(
+			dailyChart({
+				labels: engines.map(([id]) => engineLabel(id, input.engineNames, lang)),
+				series: [{ name: t(lang, "mh"), data: engines.map(([, n]) => n), colour: CHART_COLOURS[3] }],
+				style: "bar",
+				horizontal: true,
+				height: Math.max(120, engines.length * 28 + 48),
+				blockId: "cs:chart:engines",
+			}),
+		);
+		out.push(seriesLine(lang, [{ name: t(lang, "m2n"), colour: 3 }]));
 	}
 
 	out.push(
 		columns([
-			[header(t(lang, "topScenarios")), topTable("cs:top:scenarios", t(lang, "colScenario"), sumMaps(inRange.map((d) => d.scenarios)), lang, "code")],
-			[header(t(lang, "topSources")), topTable("cs:top:ips", t(lang, "colAddress"), sumMaps(inRange.map((d) => d.ips)), lang, "code")],
+			[header(t(lang, "mo")), topTable("cs:top:scenarios", t(lang, "mv"), sumMaps(inRange.map((d) => d.scenarios)), lang, "code")],
+			[header(t(lang, "mp")), topTable("cs:top:ips", t(lang, "mw"), sumMaps(inRange.map((d) => d.ips)), lang, "code")],
 		]),
 	);
 	out.push(
 		columns([
-			[header(t(lang, "topCountries")), topTable("cs:top:countries", t(lang, "colCountry"), sumMaps(inRange.map((d) => d.countries)), lang, "text", country)],
-			[header(t(lang, "topAsNames")), topTable("cs:top:as", t(lang, "colAsName"), sumMaps(inRange.map((d) => d.asNames)), lang, "text")],
+			[header(t(lang, "mq")), topTable("cs:top:countries", t(lang, "mx"), sumMaps(inRange.map((d) => d.countries)), lang, "text", country)],
+			[header(t(lang, "mr")), topTable("cs:top:as", t(lang, "my"), sumMaps(inRange.map((d) => d.asNames)), lang, "text")],
 		]),
 	);
-	out.push(header(t(lang, "topPaths")));
-	out.push(topTable("cs:top:paths", t(lang, "colPath"), sumMaps(inRange.map((d) => d.paths)), lang, "code"));
-	out.push(context([t(lang, "topListsNote", { zone }), ...(range === 1 ? [t(lang, "topListsTwoDays")] : [])].join(" ")));
+	out.push(header(t(lang, "ms")));
+	out.push(topTable("cs:top:paths", t(lang, "m10"), sumMaps(inRange.map((d) => d.paths)), lang, "code"));
+	out.push(context([t(lang, "mt", { zone }), ...(range === 1 ? [t(lang, "mu")] : [])].join(" ")));
 	return out;
 }
 
@@ -275,19 +293,26 @@ function dailyView(input: SecurityInput, today: Day): View {
 	const traffic = new Map(input.traffic.map((d) => [d.date, d]));
 	const sampledDay = input.metrics ? localDay(input.metrics.since, zone) : null;
 	const trafficIn = (from: Day, to: Day) => sumCounters(input.traffic.filter((d) => within(d, from, to)).map((d) => d.counters));
+	// Ninety days are drawn in three-day bars: a bar a day would pass the
+	// 2,000 nodes a Block Kit answer may hold once traffic charts are on.
+	const per = range > 30 ? 3 : 1;
+	const groups = Array.from({ length: Math.ceil(dayKeys.length / per) }, (_, i) => dayKeys.slice(i * per, (i + 1) * per));
 	return {
-		labels: dayKeys.map((day) => formatShortDay(day, lang)),
+		labels: groups.map((g) => (per === 1 ? formatShortDay(g[0]!, lang) : t(lang, "m2h", { from: formatShortDay(g[0]!, lang), to: formatShortDay(g[g.length - 1]!, lang) }))),
 		alertStats: [
-			stat(t(lang, "alertsInRange", { days: range }), "alerts"),
-			stat(t(lang, "bansInRange", { days: range }), "bans"),
-			stat(t(lang, "wafInRange", { days: range }), "waf"),
+			stat(t(lang, "mi", { days: range }), "alerts"),
+			stat(t(lang, "mj", { days: range }), "bans"),
+			stat(t(lang, "mk", { days: range }), "waf"),
 		],
 		alertValues: (key) =>
-			dayKeys.map((day) => {
-				const row = byDay.get(day);
-				return row ? row[key] : day >= coveredDay ? 0 : null;
+			groups.map((g) => {
+				const values = g.map((day) => {
+					const row = byDay.get(day);
+					return row ? row[key] : day >= coveredDay ? 0 : null;
+				});
+				return values.every((v) => v === null) ? null : values.reduce<number>((n, v) => n + (v ?? 0), 0);
 			}),
-		trafficBuckets: dayKeys.map((day) => traffic.get(day)?.counters ?? {}),
+		trafficBuckets: groups.map((g) => sumCounters(g.map((day) => traffic.get(day)?.counters ?? {}))),
 		traffic: trafficIn(start, today),
 		trafficBefore: sampledDay !== null && sampledDay < previousStart ? trafficIn(previousStart, addDays(start, -1)) : null,
 		topDays: inRange,
@@ -297,9 +322,9 @@ function dailyView(input: SecurityInput, today: Day): View {
 function activeStat(input: SecurityInput) {
 	const { state, now, lang } = input;
 	return {
-		label: t(lang, "activeBans"),
+		label: t(lang, "md"),
 		value: state.active ? `${formatCount(state.active.bans, lang)}${state.active.truncated ? "+" : ""}` : "-",
-		description: state.active ? t(lang, "asOf", { age: formatAge(state.active.at, now, lang) ?? "" }) : t(lang, "notCountedYet"),
+		description: state.active ? t(lang, "me", { age: formatAge(state.active.at, now, lang) ?? "" }) : t(lang, "mf"),
 	};
 }
 
@@ -309,9 +334,9 @@ function activeStat(input: SecurityInput) {
  */
 function trafficSection(input: SecurityInput, view: View): SecurityBlock[] {
 	const { lang, metrics, now, range } = input;
-	const out: SecurityBlock[] = [header(t(lang, "trafficDiscarded"))];
+	const out: SecurityBlock[] = [header(t(lang, "m1r"))];
 	if (!metrics) {
-		out.push(context(t(lang, "trafficWaiting")));
+		out.push(context(t(lang, "m1s")));
 		return out;
 	}
 	const packets = discarded(view.traffic, "packets");
@@ -321,7 +346,7 @@ function trafficSection(input: SecurityInput, view: View): SecurityBlock[] {
 	out.push(
 		stats([
 			{
-				label: t(lang, "packetsDiscarded"),
+				label: t(lang, "m1t"),
 				value: formatShort(packets.total, lang),
 				description: `${formatBytes(bytes.total, lang)} · ${comparisonText(packets.total, before?.total ?? null, lang)}`,
 				...(trend && { trend }),
@@ -347,32 +372,32 @@ function trafficSection(input: SecurityInput, view: View): SecurityBlock[] {
 		const share = Math.min(1, packets.total / processed);
 		out.push(
 			meter({
-				label: t(lang, "shareDiscarded"),
+				label: t(lang, "m1u"),
 				value: Math.round(share * 1000) / 10,
 				max: 100,
-				customValue: t(lang, "shareOf", { share: new Intl.NumberFormat("en-AU", { style: "percent", maximumFractionDigits: 1 }).format(share), processed: formatShort(processed, lang) }),
+				customValue: t(lang, "m1v", { share: new Intl.NumberFormat("en-AU", { style: "percent", maximumFractionDigits: 1 }).format(share), processed: formatShort(processed, lang) }),
 				blockId: "cs:meter:share",
 			}),
 		);
 	}
 
-	out.push(header(t(lang, "webRequests")));
+	out.push(header(t(lang, "m1w")));
 	out.push(
 		dailyChart({
 			labels: view.labels,
 			series: [
-				{ name: t(lang, "requestsInspected"), data: view.trafficBuckets.map((c) => c["as.reqs"] ?? 0), colour: CHART_COLOURS[3] },
-				{ name: t(lang, "requestsBlocked"), data: view.trafficBuckets.map((c) => c["as.blocks"] ?? 0), colour: CHART_COLOURS[5] },
+				{ name: t(lang, "m1x"), data: view.trafficBuckets.map((c) => c["as.reqs"] ?? 0), colour: CHART_COLOURS[3] },
+				{ name: t(lang, "m1y"), data: view.trafficBuckets.map((c) => c["as.blocks"] ?? 0), colour: CHART_COLOURS[5] },
 			],
 			style: "line",
 			height: 240,
 			blockId: "cs:chart:requests",
 		}),
 	);
-	out.push(seriesLine(lang, [{ name: t(lang, "requestsInspected"), colour: 3 }, { name: t(lang, "requestsBlocked"), colour: 5 }]));
+	out.push(seriesLine(lang, [{ name: t(lang, "m1x"), colour: 3 }, { name: t(lang, "m1y"), colour: 5 }]));
 	const funnel = CHALLENGE_STAGES.map((stage) => view.traffic[`ch.${stage}`] ?? 0);
 	if (funnel.some((n) => n > 0)) {
-		out.push(header(t(lang, "challengeFunnel")));
+		out.push(header(t(lang, "m1z")));
 		out.push(
 			dailyChart({
 				labels: CHALLENGE_STAGES.map((stage) => t(lang, `challenge_${stage}` as MessageKey)),
@@ -382,42 +407,43 @@ function trafficSection(input: SecurityInput, view: View): SecurityBlock[] {
 				blockId: "cs:chart:challenge",
 			}),
 		);
-		out.push(seriesLine(lang, [{ name: t(lang, range === 1 ? "challengesDay" : "challengesRange", { days: range }), colour: 2 }]));
+		out.push(seriesLine(lang, [{ name: t(lang, range === 1 ? "m20" : "m21", { days: range }), colour: 2 }]));
 	}
 
 	const gauges = metrics.gauges;
 	if (gauges) {
-		out.push(header(t(lang, "bansBySource")));
+		out.push(header(t(lang, "m22")));
 		const groups = ORIGIN_GROUPS.filter((g) => gauges.bansByOrigin[g] > 0 || g !== "other");
 		out.push(
 			dailyChart({
 				labels: groups.map((g) => t(lang, ORIGIN_LABEL[g])),
-				series: [{ name: t(lang, "activeDecisions"), data: groups.map((g) => gauges.bansByOrigin[g]), colour: CHART_COLOURS[0] }],
+				series: [{ name: t(lang, "m23"), data: groups.map((g) => gauges.bansByOrigin[g]), colour: CHART_COLOURS[0] }],
 				style: "bar",
 				horizontal: true,
 				height: 180,
 				blockId: "cs:chart:sources",
 			}),
 		);
-		out.push(seriesLine(lang, [{ name: t(lang, "activeDecisionsNow"), colour: 0 }]));
+		out.push(seriesLine(lang, [{ name: t(lang, "m24"), colour: 0 }]));
 		out.push(
 			table({
 				blockId: "cs:top:community",
 				pageActionId: "cs:top:community:page",
 				columns: [
-					{ key: "reason", label: t(lang, "colCommunityReason"), format: "code" },
-					{ key: "decisions", label: t(lang, "colDecisions"), format: "number" },
+					{ key: "reason", label: t(lang, "m25"), format: "code" },
+					{ key: "decisions", label: t(lang, "m26"), format: "number" },
 				],
 				rows: ranked(gauges.communityReasons)
 					.slice(0, TOP_ROWS)
 					.map(([reason, decisions]) => ({ reason, decisions })),
-				emptyText: t(lang, "nothingRecorded"),
+				emptyText: t(lang, "m1"),
 			}),
 		);
 	}
-	out.push(context(t(lang, "trafficNote", { age: formatAge(metrics.since, now, lang) ?? "" })));
+	out.push(context(t(lang, "m27", { age: formatAge(metrics.since, now, lang) ?? "" })));
 	return out;
 }
+
 
 function topTable(blockId: string, label: string, map: Record<string, number>, lang: Lang, format: "text" | "code", display: (value: string) => string = (v) => v) {
 	return table({
@@ -425,12 +451,12 @@ function topTable(blockId: string, label: string, map: Record<string, number>, l
 		pageActionId: `${blockId}:page`,
 		columns: [
 			{ key: "value", label, format },
-			{ key: "alerts", label: t(lang, "colAlerts"), format: "number" },
+			{ key: "alerts", label: t(lang, "mh"), format: "number" },
 		],
 		rows: ranked(map)
 			.slice(0, TOP_ROWS)
 			.map(([value, alerts]) => ({ value: display(value), alerts })),
-		emptyText: t(lang, "nothingRecorded"),
+		emptyText: t(lang, "m1"),
 	});
 }
 
@@ -438,15 +464,15 @@ function controls(range: RangeDays, lang: Lang) {
 	return actions(
 		[
 			...RANGES.map((days) =>
-				button(rangeActionId(days), days === 1 ? t(lang, "range24h") : t(lang, "rangeDays", { count: days }), {
+				button(rangeActionId(days), days === 1 ? t(lang, "range24h") : t(lang, "m2", { count: days }), {
 					style: days === range ? "primary" : "secondary",
 					value: days,
 				}),
 			),
 			button(PAGE_REFRESH, t(lang, "refresh"), { style: "secondary", value: range }),
-			link(t(lang, "alertsPage"), { kind: "plugin-page", path: ALERTS_PATH }, { appearance: "secondary" }),
-			link(t(lang, "decisionsPage"), { kind: "plugin-page", path: DECISIONS_PATH }, { appearance: "secondary" }),
-			button(SETUP_ACTION, t(lang, "checkSetup"), { style: "secondary", value: range }),
+			link(t(lang, "m6"), { kind: "plugin-page", path: ALERTS_PATH }, { appearance: "secondary" }),
+			link(t(lang, "m7"), { kind: "plugin-page", path: DECISIONS_PATH }, { appearance: "secondary" }),
+			button(SETUP_ACTION, t(lang, "m8"), { style: "secondary", value: range }),
 		],
 		{ blockId: "cs:controls" },
 	);

@@ -45,7 +45,7 @@ import {
 	textInput,
 	type SecurityBlock,
 } from "./blocks.js";
-import { countryName, formatAge, formatCount, formatRemaining, formatTime } from "./format.js";
+import { countryName, formatAge, formatCompact, formatCount, formatRemaining } from "./format.js";
 import { ALERTS_PATH, BAN_CONFIRM, BAN_REVIEW, DECISIONS_REFRESH, DECISIONS_REMOVE, DECISIONS_TABLE, SECURITY_PATH } from "./ids.js";
 
 export const DECISION_ROWS = 50;
@@ -67,7 +67,7 @@ export async function readActive(
 	for (let i = 0; i < ACTIVE_TRIES; i++) {
 		last = await source.alerts({ activeOnly: true, limit: size, simulated: settings.includeSimulated });
 		if (last.ok) return { ok: true, value: { alerts: last.value, truncated: last.value.length >= size, read: size } };
-		if (last.problem.key !== "tooLarge" || size <= MIN_BATCH) break;
+		if (last.problem.key !== "m7c" || size <= MIN_BATCH) break;
 		size = Math.max(MIN_BATCH, Math.floor(size / 2));
 	}
 	// Every way out of the loop above is a failure.
@@ -193,8 +193,8 @@ export function renderDecisions(input: DecisionsInput): SecurityBlock[] {
 		actions(
 			[
 				button(`${DECISIONS_REFRESH}|${view.dir}`, t(lang, "refresh"), { style: "secondary" }),
-				link(t(lang, "securityPage"), { kind: "plugin-page", path: SECURITY_PATH }, { appearance: "secondary" }),
-				link(t(lang, "alertsPage"), { kind: "plugin-page", path: ALERTS_PATH }, { appearance: "secondary" }),
+				link(t(lang, "m5"), { kind: "plugin-page", path: SECURITY_PATH }, { appearance: "secondary" }),
+				link(t(lang, "m6"), { kind: "plugin-page", path: ALERTS_PATH }, { appearance: "secondary" }),
 			],
 			{ blockId: "cs:decisions:controls" },
 		),
@@ -207,8 +207,8 @@ export function renderDecisions(input: DecisionsInput): SecurityBlock[] {
 		out.push(
 			context(
 				input.blocklist.addresses === null
-					? t(lang, "blocklistTooMany", { age })
-					: t(lang, "blocklistCount", { count: input.blocklist.addresses, formatted: formatCount(input.blocklist.addresses, lang), age }),
+					? t(lang, "m4j", { age })
+					: t(lang, "m4i", { count: input.blocklist.addresses, formatted: formatCount(input.blocklist.addresses, lang), age }),
 				{ blockId: "cs:decisions:blocklist" },
 			),
 		);
@@ -217,7 +217,7 @@ export function renderDecisions(input: DecisionsInput): SecurityBlock[] {
 	if (input.error) {
 		out.push(banner({ description: input.error, variant: "error" }));
 	} else if (input.rows === null) {
-		out.push(empty({ title: t(lang, "decisionsNotRead"), description: t(lang, "decisionsNotReadDetail") }));
+		out.push(empty({ title: t(lang, "m4f"), description: t(lang, "m4g") }));
 	} else {
 		out.push(...decisionTable(input.rows, input, lang));
 	}
@@ -234,22 +234,21 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 	const country = countryName(lang);
 	const bans = new Set(all.filter((row) => row.type.toLowerCase() === "ban").map((row) => row.value)).size;
 
-	const notes = [t(lang, "decisionsCount", { count: all.length, bans })];
-	if (input.truncated) notes.push(t(lang, "decisionsTruncated", { count: input.read }));
-	if (view.offset > 0 || end < sorted.length) notes.push(t(lang, "showingRows", { from: view.offset + 1, to: end }));
+	const notes = [t(lang, "m4d", { count: all.length, bans })];
+	if (input.truncated) notes.push(t(lang, "m4e", { count: input.read }));
+	if (view.offset > 0 || end < sorted.length) notes.push(t(lang, "m3", { from: view.offset + 1, to: end }));
 	return [
 		context(notes.join(" · ")),
 		table({
 			blockId: "cs:decisions:table",
 			pageActionId: `${DECISIONS_TABLE}|${view.dir}`,
 			columns: [
-				{ key: "value", label: t(lang, "colAddress"), format: "code" },
-				{ key: "scenario", label: t(lang, "colScenario"), format: "code" },
-				{ key: "type", label: t(lang, "colType"), format: "badge" },
-				{ key: "origin", label: t(lang, "colOrigin"), format: "text" },
-				{ key: "expires", label: t(lang, "colRemaining"), format: "text", sortable: true },
-				{ key: "country", label: t(lang, "colCountry"), format: "text" },
-				{ key: "as", label: t(lang, "colAsName"), format: "text" },
+				{ key: "value", label: t(lang, "mw"), format: "code" },
+				{ key: "scenario", label: t(lang, "mv"), format: "text" },
+				{ key: "type", label: t(lang, "m4a"), format: "badge" },
+				{ key: "origin", label: t(lang, "m4b"), format: "text" },
+				{ key: "expires", label: t(lang, "m4c"), format: "text", sortable: true },
+				{ key: "network", label: t(lang, "mz"), format: "text" },
 				...(input.canWrite ? [{ key: "remove", label: "", format: "element" as const }] : []),
 			],
 			rows: rows.map((row) => ({
@@ -257,17 +256,16 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 				scenario: row.scenario,
 				type: row.type,
 				origin: row.origin,
-				expires: `${formatRemaining(row.remaining, lang)} (${formatTime(row.expires, lang, input.zone)})`,
-				country: country(row.country),
-				as: row.asName,
+				expires: `${formatRemaining(row.remaining, lang)} (${formatCompact(row.expires, lang, input.zone, input.now)})`,
+				network: [country(row.country), row.asName].filter(Boolean).join(" · "),
 				...(input.canWrite && {
 					// Every button an action id of its own: the row's decision id rides in it too.
 					remove: button(`${DECISIONS_REMOVE}|${view.dir}|${row.id}`, t(lang, "remove"), {
 						style: "danger",
 						value: row.id,
 						confirm: confirmDialog(
-							t(lang, "removeTitle"),
-							t(lang, "removeText", { type: row.type, value: row.value }),
+							t(lang, "m4m"),
+							t(lang, "m4n", { type: row.type, value: row.value }),
 							t(lang, "remove"),
 							t(lang, "cancel"),
 						),
@@ -275,7 +273,7 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 				}),
 			})),
 			...(end < sorted.length && { nextCursor: String(end) }),
-			emptyText: t(lang, "noActiveDecisions"),
+			emptyText: t(lang, "m4h"),
 		}),
 	];
 }
@@ -283,62 +281,68 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 function banBlocks(p: ProtectedView, lang: Lang): SecurityBlock[] {
 	const list = (items: string[]) => (items.length > 0 ? items.join(", ") : t(lang, "none"));
 	return [
-		header(t(lang, "banTitle")),
+		header(t(lang, "m4s")),
 		fields(
 			[
-				{ label: t(lang, "protectedCaller"), value: p.callers.length > 0 ? list(p.callers) : t(lang, "callerUnknown") },
-				{ label: t(lang, "protectedSite"), value: p.dnsKnown || p.site.length > 0 ? list(p.site) : t(lang, "notLookedUp") },
-				{ label: t(lang, "protectedLapi"), value: p.dnsKnown || p.lapi.length > 0 ? list(p.lapi) : t(lang, "notLookedUp") },
-				{ label: t(lang, "protectedSetting"), value: list(p.setting) },
+				{ label: t(lang, "m4t"), value: p.callers.length > 0 ? list(p.callers) : t(lang, "m4x") },
+				{ label: t(lang, "m4u"), value: p.dnsKnown || p.site.length > 0 ? list(p.site) : t(lang, "m4y") },
+				{ label: t(lang, "m4v"), value: p.dnsKnown || p.lapi.length > 0 ? list(p.lapi) : t(lang, "m4y") },
+				{ label: t(lang, "m4w"), value: list(p.setting) },
 			],
 			{ blockId: "cs:ban:protected" },
 		),
 		context(
-			[t(lang, "protectedBuiltIn"), ...(p.invalidSetting.length > 0 ? [t(lang, "protectedInvalid", { entries: p.invalidSetting.join(", ") })] : [])].join(" "),
+			[t(lang, "m4z"), ...(p.invalidSetting.length > 0 ? [t(lang, "m50", { entries: p.invalidSetting.join(", ") })] : [])].join(" "),
 		),
-		form(
-			[
-				textInput("value", t(lang, "fieldAddress"), { placeholder: "203.0.113.7" }),
-				select(
-					"duration",
-					t(lang, "fieldDuration"),
-					Object.keys(BAN_DURATIONS).map((value) => ({ value, label: t(lang, `duration_${value}` as "duration_4h") })),
-					{ initialValue: "4h" },
-				),
-				select(
-					"type",
-					t(lang, "fieldType"),
-					[
-						{ value: "ban", label: t(lang, "typeBan") },
-						{ value: "captcha", label: t(lang, "typeCaptcha") },
-					],
-					{ initialValue: "ban" },
-				),
-				textInput("note", t(lang, "fieldNote"), { placeholder: t(lang, "fieldNoteHint") }),
-			],
-			{ label: t(lang, "reviewBan"), actionId: BAN_REVIEW },
-			{ blockId: "cs:ban:form" },
-		),
+		banForm(lang, BAN_REVIEW),
 	];
 }
 
-function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: boolean }, lang: Lang): SecurityBlock[] {
+/** The ban form: the address, unless it is already known, the duration, the type and a note. */
+export function banForm(lang: Lang, actionId: string, address?: string): SecurityBlock {
+	return form(
+		[
+			...(address ? [] : [textInput("value", t(lang, "m51"), { placeholder: "203.0.113.7" })]),
+			select(
+				"duration",
+				t(lang, "m52"),
+				Object.keys(BAN_DURATIONS).map((value) => ({ value, label: t(lang, `duration_${value}` as "duration_4h") })),
+				{ initialValue: "4h" },
+			),
+			select(
+				"type",
+				t(lang, "m53"),
+				[
+					{ value: "ban", label: t(lang, "m56") },
+					{ value: "captcha", label: t(lang, "m57") },
+				],
+				{ initialValue: "ban" },
+			),
+			textInput("note", t(lang, "m54"), { placeholder: t(lang, "m55") }),
+		],
+		{ label: address ? t(lang, "m46", { value: address }) : t(lang, "m58"), actionId },
+		{ blockId: address ? "cs:x:ban" : "cs:ban:form" },
+	);
+}
+
+/** A reviewed ban and its confirmed Ban button. */
+export function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: boolean }, lang: Lang, confirmId: string = BAN_CONFIRM): SecurityBlock[] {
 	const { check, input } = review;
-	const what = t(lang, "reviewWhat", {
-		type: input.type === "captcha" ? t(lang, "typeCaptcha") : t(lang, "typeBan"),
+	const what = t(lang, "m5a", {
+		type: input.type === "captcha" ? t(lang, "m57") : t(lang, "m56"),
 		value: check.value,
 		duration: t(lang, `duration_${input.duration}` as "duration_4h"),
 	});
-	const own = [check.ownChecked ? t(lang, "ownChecked") : t(lang, "ownNotChecked"), ...(review.blocklisted ? [t(lang, "alreadyBlocklisted")] : [])].join(" ");
+	const own = [check.ownChecked ? t(lang, "m5c") : t(lang, "m5d"), ...(review.blocklisted ? [t(lang, "m4k")] : [])].join(" ");
 	return [
-		banner({ title: t(lang, "reviewTitle"), description: `${what} ${own}`, variant: check.ownChecked ? "default" : "alert" }),
-		section(t(lang, "reviewChecks"), {
-			accessory: button(BAN_CONFIRM, t(lang, "banNow"), {
+		banner({ title: t(lang, "m59"), description: `${what} ${own}`, variant: check.ownChecked ? "default" : "alert" }),
+		section(t(lang, "m5b"), {
+			accessory: button(confirmId, t(lang, "m5e"), {
 				style: "danger",
 				value: { value: check.value, duration: input.duration, type: input.type, note: input.note },
-				confirm: confirmDialog(t(lang, "banConfirmTitle"), `${what} ${own}`, t(lang, "banNow"), t(lang, "cancel")),
+				confirm: confirmDialog(t(lang, "m5f"), `${what} ${own}`, t(lang, "m5e"), t(lang, "cancel")),
 			}),
-			blockId: "cs:ban:review",
+			blockId: confirmId === BAN_CONFIRM ? "cs:ban:review" : "cs:x:review",
 		}),
 	];
 }

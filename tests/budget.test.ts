@@ -2,12 +2,11 @@ import type { PluginRuntimeTestHost } from "@emdash-cms/plugin-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { RawAlert } from "../src/lapi/types.js";
+import { compactAlert } from "../src/store/rows.js";
 import { DEFAULT_BATCH, floorOf, type SyncState } from "../src/sync/scheduler.js";
 import { TOOL_ROUTES } from "../src/tools/load.js";
 import {
-	ALERTS_DELETE,
 	ALERTS_PATH,
-	ALERTS_VIEW,
 	BAN_CONFIRM,
 	BAN_REVIEW,
 	DECISIONS_PATH,
@@ -19,6 +18,8 @@ import {
 	WIDGET_REFRESH,
 } from "../src/ui/ids.js";
 import { bridgeCalls } from "./bridge-calls.js";
+import { xid } from "../src/ui/explorer.js";
+import { DEFAULT_VIEW, withView } from "../src/explorer/model.js";
 import { failure } from "../src/i18n.js";
 import { settingsFrom } from "../src/settings.js";
 import { readActive } from "../src/ui/decisions.js";
@@ -36,6 +37,7 @@ import { ADMIN, json, LAPI, newHost, respondLogin, respondSearch, sampleAlerts, 
  */
 
 const LIMIT = 10;
+const VIEW = { ...DEFAULT_VIEW, f: {} };
 const DATASET = `lapi|${LAPI}|false|${ZONE}`;
 
 let host: PluginRuntimeTestHost | undefined;
@@ -84,7 +86,7 @@ describe("sync ticks against a LAPI", () => {
 		host = await newHost("lapi");
 		const now = Date.now();
 		const to = new Date(now - 10 * DAY).toISOString();
-		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date(now).toISOString(), gaps: [{ from: floorOf({ retentionDays: 90, timeZone: ZONE }, new Date(now)), to }], lastSync: to });
+		await setState(host, { dataset: DATASET, head: new Date(now).toISOString(), gaps: [{ from: floorOf({ retentionDays: 90, timeZone: ZONE }, new Date(now)), to }], lastSync: to });
 		await respondLogin(host);
 		const batch = alertsBack(DEFAULT_BATCH, Date.parse(to) - 60_000, (29 * DAY) / DEFAULT_BATCH);
 		await respondSearch(host, () => ({ since: new Date(Date.parse(to) - 30 * DAY), until: new Date(to), limit: DEFAULT_BATCH, simulated: false }), batch);
@@ -99,7 +101,7 @@ describe("sync ticks against a LAPI", () => {
 	it("a forward tick whose full batch leaves a gap", async () => {
 		host = await newHost("lapi");
 		const head = new Date(Date.now() - 6 * 3_600_000).toISOString();
-		await setState(host, { blocklistPurged: true, dataset: DATASET, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { dataset: DATASET, head, gaps: [], slot: 0, lastSync: head });
 		await respondLogin(host);
 		const batch = alertsBack(DEFAULT_BATCH, Date.now() - 60_000, 60_000);
 		await respondSearch(host, (now) => ({ since: new Date(now.getTime() - DAY), limit: DEFAULT_BATCH, simulated: false }), batch);
@@ -112,7 +114,7 @@ describe("sync ticks against a LAPI", () => {
 
 	it("the bans slot when the DNS cache for the ban protections is cold: two hostnames, A and AAAA each", async () => {
 		host = await newHost("lapi", { allowChanges: true });
-		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		for (const name of ["www.example.test", "lapi.example.test"]) {
 			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=A`, json({ Answer: [{ type: 1, data: "198.51.100.10" }] }));
 			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=AAAA`, json({ Answer: [{ type: 28, data: "2001:db8::10" }] }));
@@ -127,7 +129,7 @@ describe("sync ticks against a LAPI", () => {
 
 	it("the bans slot when the lookup fails after three requests, which still counts the bans", async () => {
 		host = await newHost("lapi", { allowChanges: true });
-		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		// Names go in order: the LAPI host answers both, the site's first request fails.
 		await host.http.respond("https://cloudflare-dns.com/dns-query?name=lapi.example.test&type=A", json({ Answer: [{ type: 1, data: "198.51.100.20" }] }));
 		await host.http.respond("https://cloudflare-dns.com/dns-query?name=lapi.example.test&type=AAAA", json({}));
@@ -156,7 +158,7 @@ describe("sync ticks against a LAPI", () => {
 		await warmDns(host);
 		const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`;
 		for (const [name, slot] of [["sync", 2], ["bans", 0]] as const) {
-			await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot, lastSync: "x" });
+			await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot, lastSync: "x" });
 			await respondLogin(host);
 			await host.http.respond(activeUrl, json(sampleAlerts()));
 			within(await bridgeCalls(tick(host, name)));
@@ -165,6 +167,44 @@ describe("sync ticks against a LAPI", () => {
 		await respondLogin(host);
 		await respondSearch(host, (now) => ({ since: new Date(now.getTime() - DAY), limit: DEFAULT_BATCH, simulated: false }), sampleAlerts());
 		within(await bridgeCalls(tick(host, "refresh")));
+	});
+
+	it("every tick that moves alert rows stored by 0.1.0 into the alert log", async () => {
+		host = await newHost("lapi");
+		const now = new Date();
+		const base = sampleAlerts();
+		for (let i = 0; i < 250; i++) {
+			const row = compactAlert({ ...base[i % base.length]!, id: 5000 + i }, now, ZONE)!;
+			await host.fixtures.plugin.storage("alerts", String(row.id), row);
+		}
+		await setState(host, { logMigrated: false, dataset: DATASET, head: now.toISOString(), gaps: [], lastSync: "x" });
+		let ticks = 0;
+		// The first run is the scheduled sync. Each run while rows remain schedules the next one-shot run.
+		for (; ticks < 10 && !(await state(host)).logMigrated; ticks++) {
+			const calls = await bridgeCalls(tick(host, ticks === 0 ? "sync" : (await state(host)).chain!.next));
+			within(calls);
+			if (ticks < 2) expect(calls).toContain("cronSchedule");
+		}
+		expect(ticks).toBe(3);
+		await expect(host.inspect.storage.list("alerts")).resolves.toEqual([]);
+		const log = await host.inspect.storage.list<{ alerts: Array<{ i: number }> }>("log");
+		expect(new Set(log.flatMap((r) => r.data.alerts.map((a) => a.i))).size).toBe(250);
+	});
+
+	it("a tick that finds the metrics settings changed schedules the sampler, or cancels it", async () => {
+		host = await newHost("lapi", { engineMetricsUrl: `${LAPI}/metrics` });
+		await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], lastSync: "x", sampler: false });
+		const on = await bridgeCalls(tick(host));
+		within(on);
+		expect(on).toContain("cronSchedule");
+		expect((await state(host)).sampler).toBe(true);
+		expect((await host.inspect.scheduledTasks()).map((t) => String(t.name))).toContain("metrics");
+
+		await host.fixtures.plugin.setting("engineMetricsUrl", "");
+		const off = await bridgeCalls(tick(host));
+		within(off);
+		expect((await state(host)).sampler).toBe(false);
+		expect((await host.inspect.scheduledTasks()).map((t) => String(t.name))).not.toContain("metrics");
 	});
 
 	it("every tick of a wipe after the dataset changed, until it completes", async () => {
@@ -181,12 +221,41 @@ describe("sync ticks against a LAPI", () => {
 	});
 
 	it("a nightly prune with more to delete than one run can", async () => {
+		// The maintenance run prunes at 3 am local time.
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date("2026-10-09T16:20:00.000Z")); // 3:20 am in Sydney
 		host = await newHost("lapi");
-		for (let i = 0; i < 450; i++) await host.fixtures.plugin.storage("alerts", String(i), { id: i, startedAt: "2025-01-01T00:00:00.000Z" });
+		for (let i = 0; i < 450; i++) await host.fixtures.plugin.storage("log", `2025-01-01|c${i}`, { day: "2025-01-01", part: "chunk", alerts: [], updatedAt: "" });
 		within(await bridgeCalls(tick(host, "reconcile")));
-		const left = (await host.inspect.storage.list("alerts")).length;
+		const left = (await host.inspect.storage.list("log")).length;
+		vi.useRealTimers();
 		expect(left).toBeGreaterThan(0);
 		expect(left).toBeLessThan(450);
+	});
+
+	it("an hourly merge of the alert log: a hundred chunks over many days, with their parts", async () => {
+		vi.useFakeTimers({ toFake: ["Date"] });
+		vi.setSystemTime(new Date("2026-10-09T02:20:00.000Z")); // 1:20 pm in Sydney
+		host = await newHost("lapi");
+		const alert = (i: number, day: string) => ({ i, t: Date.parse(`${day}T01:00:00.000Z`), k: "h", s: "x", a: "203.0.113.1", c: "", o: "", p: "/", d: 0, b: 0 });
+		for (let i = 0; i < 130; i++) {
+			const day = `2026-09-${String(1 + (i % 25)).padStart(2, "0")}`;
+			await host.fixtures.plugin.storage("log", `${day}|c${i}`, { day, part: "chunk", alerts: [alert(i, day)], updatedAt: "" });
+		}
+		await host.fixtures.plugin.storage("log", "2026-09-01|p0", { day: "2026-09-01", part: "part", alerts: [alert(999, "2026-09-01")], updatedAt: "" });
+		await host.fixtures.plugin.storage("log", "2026-10-09|c500", { day: "2026-10-09", part: "chunk", alerts: [alert(500, "2026-10-09")], updatedAt: "" });
+		const calls = await bridgeCalls(tick(host, "reconcile"));
+		within(calls);
+		const rows = await host.inspect.storage.list<{ day: string; part: string; alerts: Array<{ i: number }> }>("log");
+		vi.useRealTimers();
+		// Every alert is kept, once.
+		const ids = rows.flatMap((r) => r.data.alerts.map((a) => a.i));
+		expect(new Set(ids).size).toBe(ids.length);
+		expect(ids.length).toBe(132);
+		// A hundred chunks were merged into parts, the rest wait for the next hour, and today's chunk is left alone.
+		expect(rows.filter((r) => r.data.part === "chunk")).toHaveLength(31);
+		expect(rows.find((r) => r.id === "2026-10-09|c500")).toBeDefined();
+		expect(rows.find((r) => r.id === "2026-09-01|p0")?.data.alerts.map((a) => a.i)).toContain(999);
 	});
 
 	it("a tick that finds the lease taken", async () => {
@@ -209,20 +278,20 @@ describe("the live read of active decisions", () => {
 			skew: () => undefined,
 			alerts: async (query: { limit: number }) => {
 				sizes.push(query.limit);
-				return sizes.length < 3 ? failure("tooLarge") : { ok: true as const, value: sampleAlerts() };
+				return sizes.length < 3 ? failure("m7c") : { ok: true as const, value: sampleAlerts() };
 			},
 		};
-		const settings = settingsFrom(new Map<string, unknown>([["source", "demo"]]));
+		const settings = settingsFrom(new Map<string, unknown>([["lapiUrl", LAPI], ["machineId", "m"], ["machinePassword", "p"]]));
 		const res = await readActive(source, (settings.ok ? settings.settings : settings.partial), 100);
 		expect(sizes).toEqual([100, 50, 25]);
 		expect(res.ok).toBe(true);
 		expect(2 + 1 + sizes.length).toBeLessThanOrEqual(LIMIT);
 
 		sizes.length = 0;
-		source.alerts = async (query: { limit: number }) => (sizes.push(query.limit), failure("tooLarge"));
+		source.alerts = async (query: { limit: number }) => (sizes.push(query.limit), failure("m7c"));
 		const failed = await readActive(source, (settings.ok ? settings.settings : settings.partial), 100);
 		expect(sizes).toHaveLength(3);
-		expect(failed.ok ? null : failed.problem.key).toBe("tooLarge");
+		expect(failed.ok ? null : failed.problem.key).toBe("m7c");
 	});
 });
 
@@ -237,10 +306,10 @@ describe("admin requests", () => {
 	}
 
 	it("the widget, before the first sync, and its Refresh", async () => {
-		host = await newHost("demo");
+		host = await newHost("lapi");
 		const load = await bridgeCalls(() => host!.admin.loadWidget("security"));
 		within(load);
-		// The sync, the nightly prune, the daily blocklist count and, with demo data, the metrics sampler.
+		// The sync, the hourly maintenance, the daily blocklist count and its first run now. No metrics URL, so no sampler.
 		expect(load.filter((c) => c === "cronSchedule")).toHaveLength(4);
 		within(await bridgeCalls(() => host!.admin.act("widget:security", WIDGET_REFRESH)));
 	});
@@ -264,17 +333,71 @@ describe("admin requests", () => {
 		expect(setup.filter((c) => c === "httpFetch")).toHaveLength(6);
 	});
 
-	it("the Alerts page, filtered, and a delete that reads the page again", async () => {
+	/** A year of merged log rows and three hundred chunks: more than the explorer's four log queries hold. */
+	async function withLog(runtime: PluginRuntimeTestHost) {
+		for (let i = 0; i < 700; i++) {
+			const day = new Date(Date.now() - (i % 360) * DAY).toISOString().slice(0, 10);
+			const alerts = [{ i: i + 1, t: Date.parse(`${day}T00:30:00.000Z`), k: "w", s: "crowdsecurity/vpatch-env-access", a: `203.0.113.${i % 200}`, c: "NL", o: "Example", p: "/.env", d: 0, b: 0 }];
+			await runtime.fixtures.plugin.storage("log", `${day}|c${i}`, { day, part: "chunk", alerts, updatedAt: "" });
+		}
+	}
+
+	it("the Alerts explorer: a first visit, every period, and the views of an address and an alert", async () => {
+		host = await newHost("lapi", { allowChanges: true, retentionDays: 400 });
+		await withDays(host);
+		await withLog(host);
+		const first = await bridgeCalls(() => host!.admin.loadPage(ALERTS_PATH));
+		within(first);
+		expect(first).toContain("kvSet");
+		for (const p of ["1h", "24h", "3d", "7d", "30d", "ret", "visit"] as const) {
+			const calls = await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("per", withView(VIEW, { p }))));
+			within(calls);
+			// Everything kept: the day rows before the period, and the four log queries a page may make.
+			if (p === "ret") expect(calls.filter((c) => c === "storageQuery")).toHaveLength(5);
+		}
+		within(await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("ipv", withView(VIEW, { p: "ret", d: "203.0.113.7" })))));
+		await respondLogin(host);
+		await host.http.respond(`${LAPI}/v1/alerts/625`, json(sampleAlerts().find((a) => a.id === 625)));
+		const detail = await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("al", { ...VIEW, al: 625 })));
+		within(detail);
+		expect(detail.filter((c) => c === "httpFetch")).toHaveLength(2);
+	});
+
+	it("the explorer's writes: a review with a cold DNS cache, a ban, a removal and a delete", async () => {
 		host = await newHost("lapi", { allowChanges: true });
 		await withDays(host);
-		within(await bridgeCalls(() => host!.admin.act(ALERTS_PATH, `${ALERTS_VIEW}|waf|`)));
-		await respondLogin(host);
+		await withLog(host);
+		const view = { ...VIEW, d: "203.0.113.70" };
+		for (const name of ["www.example.test", "lapi.example.test"]) {
+			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=A`, json({ Answer: [{ type: 1, data: "198.51.100.10" }] }));
+			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=AAAA`, json({}));
+		}
+		const values = { duration: "4h", type: "ban", note: "" };
+		within(await bridgeCalls(() => host!.admin.submit(ALERTS_PATH, xid("banreview", view), values)));
+
+		await respondLogin(host, 200, 4);
+		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.70&has_active_decision=true&simulated=true&limit=20`, json([]));
+		const review = await bridgeCalls(() => host!.admin.submit(ALERTS_PATH, xid("banreview", view), values));
+		within(review);
+		expect(review.filter((c) => c === "storageQuery").length).toBeGreaterThan(0);
+
+		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts`, json(["906"], 201));
+		const ban = await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("banok", view), { value: { value: "203.0.113.70", ...values } }));
+		within(ban);
+		expect(ban.filter((c) => c === "httpFetch")).toHaveLength(3);
+
+		const decisions = Array.from({ length: 9 }, (_, i) => ({ id: 70 + i, value: "203.0.113.70", duration: "1h", type: "ban" }));
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.70&has_active_decision=true&simulated=true&limit=50`, json([{ id: 1, decisions }]));
+		for (const d of decisions) await host.http.respond(`${LAPI}/v1/decisions/${d.id}`, json({ nbDeleted: "1" }));
+		within(await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("unban", view))));
+
 		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ ...sampleAlerts().find((a) => a.id === 625), decisions: [{ id: 5, duration: "-10m" }] }));
 		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ nbDeleted: "1" }));
-		const calls = await bridgeCalls(() => host!.admin.act(ALERTS_PATH, `${ALERTS_DELETE}||`, { value: 625 }));
-		within(calls);
-		expect(calls.filter((c) => c === "httpFetch")).toHaveLength(3);
-		expect(calls).toContain("storageDeleteMany");
+		const del = await bridgeCalls(() => host!.admin.act(ALERTS_PATH, xid("del", { ...view, al: 625 })));
+		within(del);
+		expect(del.filter((c) => c === "httpFetch")).toHaveLength(3);
 	});
 
 	it("the Decisions page, a Remove, a review with a cold DNS cache, and a confirmed ban", async () => {

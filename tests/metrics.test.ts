@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { parsePrometheus } from "../src/metrics/prom.js";
-import { deltaOf, demoMetricsText, discarded, sampleOf } from "../src/metrics/sample.js";
+import { deltaOf, discarded, sampleOf } from "../src/metrics/sample.js";
 import type { TrafficDay } from "../src/store/rows.js";
 import { METRICS_KEY, runMetrics, type MetricsState } from "../src/sync/scheduler.js";
 import { TOOL_ROUTES } from "../src/tools/load.js";
@@ -206,7 +206,6 @@ describe("the traffic charts", () => {
 	it("draw discarded traffic by origin, its share, web requests, the challenge and bans by source, each with its series line", () => {
 		const blocks = renderSecurity({
 			state,
-			source: "lapi",
 			zone: ZONE,
 			range: 7,
 			days: [{ date: "2026-10-09", alerts: 3, waf: 1, bot: 1, behaviour: 1, manual: 0, decisions: 1, bans: 1, scenarios: { a: 3 }, countries: { NL: 2, DE: 1 }, asNames: {}, paths: {}, ips: {}, seen: [], updatedAt: "" }],
@@ -230,7 +229,7 @@ describe("the traffic charts", () => {
 	});
 
 	it("show the last 24 hours by local hour", () => {
-		const blocks = renderSecurity({ state, source: "lapi", zone: ZONE, range: 1, days: [], traffic: [], metrics, metricsOn: true, now: NOW, lang: "en" });
+		const blocks = renderSecurity({ state, zone: ZONE, range: 1, days: [], traffic: [], metrics, metricsOn: true, now: NOW, lang: "en" });
 		expect(validateBlocks(blocks).valid).toBe(true);
 		const chart = blocks.find((b) => b.block_id === "cs:chart:discarded") as unknown as { config: { options: { xAxis: { data: string[] } } } };
 		// 02:00 UTC is 13:00 in Sydney: the last hour is 13:00, the first 14:00 the day before.
@@ -240,25 +239,9 @@ describe("the traffic charts", () => {
 	});
 });
 
-describe("demo data", () => {
-	it("generates metrics that grow over time and render on the Security page", async () => {
-		const a = sampleOf(parsePrometheus(demoMetricsText("engine", new Date("2026-10-09T00:00:00Z"))), parsePrometheus(demoMetricsText("firewall", new Date("2026-10-09T00:00:00Z"))), new Date());
-		const b = sampleOf(parsePrometheus(demoMetricsText("engine", new Date("2026-10-09T01:00:00Z"))), parsePrometheus(demoMetricsText("firewall", new Date("2026-10-09T01:00:00Z"))), new Date());
-		const delta = deltaOf(a.counters, b.counters);
-		expect(discarded(delta, "packets").total).toBeGreaterThan(50);
-		expect(delta["as.reqs"]).toBeGreaterThan(100);
-
-		host = await newHost("demo");
-		await tick(host, "metrics")();
-		const page = await host.admin.loadPage(SECURITY_PATH);
-		expect(validateBlockResponse(page, { pluginPagePaths: (host.manifest.admin?.pages ?? []).map((p) => p.path) }).valid).toBe(true);
-		expect(JSON.stringify(page.blocks)).toContain("Malicious traffic discarded");
-	});
-});
-
 describe("traffic_summary", () => {
 	it("answers in its declared schema, within the budget", async () => {
-		host = await newHost("demo");
+		host = await newHost("lapi", { engineMetricsUrl: ENGINE, firewallMetricsUrl: FIREWALL });
 		const today = new Date().toISOString().slice(0, 10);
 		await host.fixtures.plugin.storage("traffic", today, { date: today, counters: { "drop.packets.community": 100, "drop.bytes.community": 6400, "proc.packets": 1000, "as.reqs": 50, "as.blocks": 2 }, samples: 4, updatedAt: "" });
 		await host.fixtures.plugin.kv(METRICS_KEY, { source: "x", last: {}, at: "", since: "2026-01-01T00:00:00Z", hours: {}, gauges: { bansByOrigin: { community: 9, detections: 1, manual: 0, other: 0 }, communityReasons: {} } });

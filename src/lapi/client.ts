@@ -76,12 +76,12 @@ export class LapiClient {
 		});
 		if (!res.ok) return res;
 		const { response, body } = res.value;
-		if (response.status === 401) return failure("loginRefused");
-		if (response.status === 403) return failure("routeRefused", { route: "POST /v1/watchers/login" });
-		if (response.status === 404) return failure("notLapi");
+		if (response.status === 401) return failure("m71");
+		if (response.status === 403) return failure("m73", { route: "POST /v1/watchers/login" });
+		if (response.status === 404) return failure("m75");
 		if (!response.ok) return httpFailure(response.status, body);
 		const data = body as { token?: unknown } | null;
-		if (!data || typeof data.token !== "string" || !data.token) return failure("unexpectedAnswer");
+		if (!data || typeof data.token !== "string" || !data.token) return failure("m77");
 		this.#token = data.token;
 		return { ok: true, value: null };
 	}
@@ -91,7 +91,7 @@ export class LapiClient {
 		const res = await this.#authed("GET /v1/alerts", () => `/v1/alerts?${alertSearch(query, this.lapiNow())}`, { method: "GET" });
 		if (!res.ok) return res;
 		if (res.value === null) return { ok: true, value: [] };
-		if (!Array.isArray(res.value)) return failure("unexpectedAnswer");
+		if (!Array.isArray(res.value)) return failure("m77");
 		return { ok: true, value: res.value as RawAlert[] };
 	}
 
@@ -100,7 +100,7 @@ export class LapiClient {
 		const res = await this.#authed("GET /v1/alerts/{id}", () => `/v1/alerts/${id}`, { method: "GET" }, { notFound: true });
 		if (!res.ok) return res;
 		if (res.value === NOT_FOUND) return { ok: true, value: null };
-		if (typeof res.value !== "object" || res.value === null) return failure("unexpectedAnswer");
+		if (typeof res.value !== "object" || res.value === null) return failure("m77");
 		return { ok: true, value: res.value as RawAlert };
 	}
 
@@ -113,7 +113,7 @@ export class LapiClient {
 		});
 		if (!res.ok) return res;
 		const ids = res.value;
-		if (!Array.isArray(ids) || ids.length === 0) return failure("unexpectedAnswer");
+		if (!Array.isArray(ids) || ids.length === 0) return failure("m77");
 		return { ok: true, value: String(ids[0]) };
 	}
 
@@ -149,11 +149,11 @@ export class LapiClient {
 		});
 		if (!res.ok) return res;
 		const results = (res.value as { results?: unknown } | null)?.results;
-		if (!Array.isArray(results)) return failure("allowlistUnreadable");
+		if (!Array.isArray(results)) return failure("m7d");
 		const reasons: string[] = [];
 		for (const result of results) {
 			const lists = (result as { allowlists?: unknown } | null)?.allowlists;
-			if (!Array.isArray(lists) || !lists.every((entry) => typeof entry === "string")) return failure("allowlistUnreadable");
+			if (!Array.isArray(lists) || !lists.every((entry) => typeof entry === "string")) return failure("m7d");
 			reasons.push(...(lists as string[]));
 		}
 		if (reasons.length === 0) return { ok: true, value: { allowlisted: false } };
@@ -173,10 +173,10 @@ export class LapiClient {
 		});
 		if (!res.ok) return res;
 		const { response, body } = res.value;
-		if (response.status === 401) return failure("tokenRefused");
-		if (response.status === 403) return failure("routeRefused", { route });
+		if (response.status === 401) return failure("m72");
+		if (response.status === 403) return failure("m73", { route });
 		if (response.status === 404 && opts.notFound) return { ok: true, value: NOT_FOUND };
-		if (response.status === 404) return failure("routeMissing", { route });
+		if (response.status === 404) return failure("m74", { route });
 		if (!response.ok) return httpFailure(response.status, body);
 		return { ok: true, value: body };
 	}
@@ -193,8 +193,8 @@ export class LapiClient {
 			});
 		} catch (error) {
 			const detail = error instanceof Error ? error.message : String(error);
-			if (/byte limit/i.test(detail)) return failure("tooLarge");
-			if (/blocked fetch|internal host/i.test(detail)) return failure("blockedHost");
+			if (/byte limit/i.test(detail)) return failure("m7c");
+			if (/blocked fetch|internal host/i.test(detail)) return failure("m7b");
 			if (/redirect/i.test(detail)) return failure("redirected", { status: 0 });
 			return failure("unreachable", { detail: detail.slice(0, 200) });
 		}
@@ -217,7 +217,7 @@ export class LapiClient {
 			if (response.status === 401 || response.status === 403 || response.status === 404) {
 				return { ok: true, value: { response, body: null } };
 			}
-			return failure("notJson", { status: response.status });
+			return failure("m76", { status: response.status });
 		}
 	}
 }
@@ -230,10 +230,10 @@ function deletedCount(body: unknown): number {
 }
 
 function httpFailure(status: number, body?: unknown) {
-	if (status === 429) return failure("rateLimited");
+	if (status === 429) return failure("m78");
 	const message = (body as { message?: unknown } | null)?.message;
-	if (typeof message === "string" && message) return failure("lapiSaid", { status, message: message.slice(0, 200) });
-	return failure("httpStatus", { status });
+	if (typeof message === "string" && message) return failure("m7a", { status, message: message.slice(0, 200) });
+	return failure("m79", { status });
 }
 
 /**

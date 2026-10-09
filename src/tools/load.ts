@@ -28,6 +28,9 @@ import { loadDays, loadTraffic } from "../ui/security.js";
 import { discarded, sumCounters } from "../metrics/sample.js";
 import { decisionRows } from "../ui/decisions.js";
 import { asRecord } from "../values.js";
+import { isBehaviour } from "../explorer/behaviour.js";
+import { breakdown, bucketsOf, DEFAULT_VIEW, DIMENSIONS, groupByIp, rangeOf, select as selectAlerts, type Dim, type ExplorerView } from "../explorer/model.js";
+import { loadExplorer } from "../ui/explorer.js";
 import { addBan, deleteAlert, parseBanInput, removeBansOn, writeGate, type Caller } from "../write/actions.js";
 
 export const TOOL_ROUTES = {
@@ -39,6 +42,7 @@ export const TOOL_ROUTES = {
 	removeBan: "mcp/remove_ban",
 	deleteAlert: "mcp/delete_alert",
 	traffic: "mcp/traffic_summary",
+	explorer: "mcp/alerts_explorer",
 } as const;
 
 export const RANGE_DAYS = [7, 30, 90] as const;
@@ -123,7 +127,7 @@ type OriginCounts = { community: number; detections: number; manual: number; oth
 
 export interface TrafficResult {
 	window: ToolWindow;
-	/** False when no metrics URL is set and the data is not demo data. */
+	/** False when no metrics URL is set. */
 	enabled: boolean;
 	sampledSince: string | null;
 	discarded: { packets: number; bytes: number; packetsByOrigin: OriginCounts; bytesByOrigin: OriginCounts };
@@ -133,6 +137,43 @@ export interface TrafficResult {
 	appsec: { inspected: number; blocked: number };
 	challenge: { requested: number; submitted: number; accepted: number; rejected: number; exempt: number };
 	activeByOrigin: OriginCounts | null;
+}
+
+export const EXPLORER_PERIODS = ["1h", "24h", "3d", "7d", "30d", "all"] as const;
+export const MAX_GROUPS = 50;
+
+export interface ExplorerBreakdown {
+	dimension: Dim;
+	total: number;
+	top: Array<{ value: string; alerts: number; share: number }>;
+	other: number;
+}
+
+export interface ExplorerResult {
+	period: { name: (typeof EXPLORER_PERIODS)[number]; since: string; until: string };
+	total: number;
+	partial: boolean;
+	breakdowns: ExplorerBreakdown[];
+	groups: {
+		total: number;
+		nextPage: number | null;
+		items: Array<{
+			address: string;
+			country: string;
+			asName: string;
+			alerts: number;
+			firstSeen: string;
+			lastSeen: string;
+			wafAlerts: number;
+			scenarios: Array<{ value: string; alerts: number }>;
+			paths: Array<{ value: string; alerts: number }>;
+			decisions: number;
+			bannedUntil: string | null;
+			seenBefore: boolean;
+			engines: Array<{ id: string; name: string }>;
+		}>;
+	};
+	lastSync: string | null;
 }
 
 export interface WriteToolResult {
@@ -276,7 +317,7 @@ export async function activeDecisions(ctx: PluginContext, input: unknown, now: D
 	const result = await readSettings(ctx);
 	if (!result.ok) throw new Error(problemText("en", result.problem));
 	const source = buildSource(ctx, result.settings, loaded.state.skewMs);
-	if (!source) throw new Error(problemText("en", { key: "noNetwork" }));
+	if (!source) throw new Error(problemText("en", { key: "m6z" }));
 	const res = await readActive(source, result.settings, loaded.state.activeBatch ?? ACTIVE_BATCH);
 	if (!res.ok) throw new Error(problemText("en", res.problem));
 	const rows = decisionRows(res.value.alerts, now).sort((a, b) => a.remaining - b.remaining || a.id - b.id);
@@ -307,7 +348,7 @@ export async function activeDecisions(ctx: PluginContext, input: unknown, now: D
  */
 export async function addressAlerts(ctx: PluginContext, input: unknown, now: Date): Promise<AddressAlertsResult> {
 	const parsed = parseNetwork(asRecord(input).address);
-	if (!parsed) throw new Error(problemText("en", { key: "invalidAddress" }));
+	if (!parsed) throw new Error(problemText("en", { key: "m7n" }));
 	// LAPI stores an IPv4 address in IPv4 form, so `::ffff:a.b.c.d` is searched as `a.b.c.d`.
 	const address = displayNetwork(parsed);
 	const network = parseNetwork(address)!;
@@ -315,7 +356,7 @@ export async function addressAlerts(ctx: PluginContext, input: unknown, now: Dat
 	const result = await readSettings(ctx);
 	if (!result.ok) throw new Error(problemText("en", result.problem));
 	const source = buildSource(ctx, result.settings, loaded.state.skewMs);
-	if (!source) throw new Error(problemText("en", { key: "noNetwork" }));
+	if (!source) throw new Error(problemText("en", { key: "m6z" }));
 	// One address's search includes the community blocklist and lists, so
 	// the answer can say the address is on one. Their alerts are not listed.
 	const res = await source.alerts({
@@ -373,7 +414,7 @@ async function writeContext(ctx: PluginContext, caller: Caller) {
 	if (!gate.ok) return { refused: problemText("en", gate.problem) } as const;
 	if (!result.ok) return { refused: problemText("en", result.problem) } as const;
 	const source = buildSource(ctx, settings, loaded.state.skewMs);
-	if (!source?.lapi) return { refused: problemText("en", { key: "noNetwork" }) } as const;
+	if (!source?.lapi) return { refused: problemText("en", { key: "m6z" }) } as const;
 	return { loaded, settings, lapi: source.lapi } as const;
 }
 
@@ -387,7 +428,7 @@ export async function banAddressTool(ctx: PluginContext, routeCtx: Parameters<ty
 	const res = await addBan(ctx, wc.lapi, wc.settings, wc.loaded.dns, caller, parsed.value, now);
 	if (!res.ok) return { done: false, message: problemText("en", res.problem) };
 	const message = problemText("en", {
-		key: res.value.ownChecked ? "banDone" : "banDoneUncheckedMcp",
+		key: res.value.ownChecked ? "m81" : "m83",
 		params: { type: res.value.type, value: res.value.value, duration: res.value.duration },
 	});
 	return { done: true, message, value: res.value.value, alertId: res.value.alertId, clientAddressChecked: res.value.ownChecked };
@@ -401,20 +442,92 @@ export async function removeBanTool(ctx: PluginContext, routeCtx: Parameters<typ
 	const res = await removeBansOn(wc.lapi, asRecord(routeCtx.input).address, WRITE_CALLS);
 	if (!res.ok) return { done: false, message: problemText("en", res.problem) };
 	const message = problemText("en", {
-		key: res.value.remaining > 0 ? "removedSome" : "removedAll",
+		key: res.value.remaining > 0 ? "m88" : "m87",
 		params: { count: res.value.removed, remaining: res.value.remaining, value: res.value.value },
 	});
 	return { done: res.value.removed > 0, message, value: res.value.value, removed: res.value.removed, remaining: res.value.remaining };
 }
 
-/** Delete one alert whose decisions ended more than two minutes ago. Calls: kv.list, settings.list, the GET, the DELETE, the row. */
+/**
+ * The Alerts explorer's numbers for an agent: one period's stored alerts,
+ * of one kind and matching every filter given, broken down by up to two
+ * dimensions, and grouped by source address. The same working as the page,
+ * from the same alert log. Calls: kv.list, settings.list, the day rows
+ * before the period and up to four log queries.
+ */
+export async function alertsExplorer(ctx: PluginContext, input: unknown, now: Date): Promise<ExplorerResult> {
+	const raw = asRecord(input);
+	const name = (EXPLORER_PERIODS as readonly unknown[]).includes(raw.period) ? (raw.period as (typeof EXPLORER_PERIODS)[number]) : "24h";
+	const kind = (KINDS as readonly unknown[]).includes(raw.kind) ? (raw.kind as Kind) : null;
+	const text = (v: unknown) => (typeof v === "string" && v.trim() && v.trim().length <= 200 ? v.trim() : undefined);
+	const address = text(raw.address);
+	if (address && !parseNetwork(address)) throw new Error(problemText("en", { key: "m7n" }));
+	const behaviour = text(raw.behaviour);
+	const f = {
+		...(address && { ip: address }),
+		...(text(raw.country) && { cn: text(raw.country)!.toUpperCase() }),
+		...(text(raw.scenario) && { sc: text(raw.scenario) }),
+		...(behaviour && isBehaviour(behaviour) && { bh: behaviour }),
+		...(text(raw.asName) && { as: text(raw.asName) }),
+		...(text(raw.path) && { tg: text(raw.path) }),
+		...(text(raw.engine) && { en: text(raw.engine) }),
+	};
+	const dims = (Array.isArray(raw.breakdowns) ? raw.breakdowns : ["ip", "behaviour"]).filter((d): d is Dim => (DIMENSIONS as readonly unknown[]).includes(d)).slice(0, 2);
+	const limit = Number.isInteger(raw.limit) && (raw.limit as number) >= 1 ? Math.min(MAX_GROUPS, raw.limit as number) : 20;
+	const page = Number.isInteger(raw.page) && (raw.page as number) > 0 ? Math.min(10_000, raw.page as number) : 0;
+
+	const loaded = await loadKv(ctx);
+	const settings = settingsOf(await readSettings(ctx));
+	const zone = settings.timeZone;
+	// Paging keeps the end the first page answered with, so no address is dropped or repeated.
+	const until = typeof raw.until === "string" ? Date.parse(raw.until) : Number.NaN;
+	const view: ExplorerView = { ...DEFAULT_VIEW, p: name === "all" ? "ret" : name, k: kind, f, ...(Number.isFinite(until) && until > 0 && { at: until }) };
+	const range = rangeOf(view, now, zone, settings.retentionDays, null);
+	const data = await loadExplorer(ctx, range, zone, 5);
+	const selected = selectAlerts(data.period, view, range);
+	const buckets = bucketsOf(range, zone);
+	const groups = groupByIp(selected, now);
+	const iso = (ms: number) => new Date(ms).toISOString();
+	const top = (list: Array<[string, number]>) => list.slice(0, 5).map(([value, alerts]) => ({ value, alerts }));
+	return {
+		period: { name, since: iso(range.since), until: iso(range.until) },
+		total: selected.length,
+		partial: data.partial,
+		breakdowns: dims.map((dimension) => {
+			const b = breakdown(selected, dimension, buckets, 5);
+			return { dimension, total: b.total, top: b.top.map((t) => ({ ...t, share: Math.round(t.share * 10_000) / 10_000 })), other: b.other };
+		}),
+		groups: {
+			total: groups.length,
+			nextPage: (page + 1) * limit < groups.length ? page + 1 : null,
+			items: groups.slice(page * limit, (page + 1) * limit).map((g) => ({
+				address: g.ip,
+				country: g.country,
+				asName: g.asName,
+				alerts: g.alerts,
+				firstSeen: iso(g.first),
+				lastSeen: iso(g.last),
+				wafAlerts: g.waf,
+				scenarios: top(g.scenarios),
+				paths: top(g.paths),
+				decisions: g.decisions,
+				bannedUntil: g.bannedUntil ? iso(g.bannedUntil) : null,
+				seenBefore: data.seenBefore.has(g.ip),
+				engines: g.engines.map((id) => ({ id, name: settings.engineNames[id] ?? id })),
+			})),
+		},
+		lastSync: loaded.state.lastSync ?? null,
+	};
+}
+
+/** Delete one alert whose decisions ended more than two minutes ago. Calls: kv.list, settings.list, the login, the GET, the DELETE, the log's query and write. */
 export async function deleteAlertTool(ctx: PluginContext, routeCtx: Parameters<typeof callerOf>[0] & { input: unknown }): Promise<WriteToolResult> {
 	const caller = callerOf(routeCtx);
 	const wc = await writeContext(ctx, caller);
 	if ("refused" in wc) return { done: false, message: wc.refused! };
-	const res = await deleteAlert(ctx, wc.lapi, asRecord(routeCtx.input).id, WRITE_CALLS);
+	const res = await deleteAlert(ctx, wc.lapi, asRecord(routeCtx.input).id, wc.settings.timeZone, WRITE_CALLS);
 	if (!res.ok) return { done: false, message: problemText("en", res.problem) };
-	return { done: true, message: problemText("en", { key: "alertDeleted", params: { id: res.value.id } }) };
+	return { done: true, message: problemText("en", { key: "m8c", params: { id: res.value.id } }) };
 }
 
 /** The tool names the target `address`; the shared parser calls it `value`. */

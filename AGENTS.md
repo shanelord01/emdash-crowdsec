@@ -3,8 +3,9 @@
 CrowdSec for EmDash: the package `emdash-crowdsec`, and
 `@shane.bsky.shas.am/emdash-crowdsec` in the EmDash registry once it is
 published there. It reads a CrowdSec Local API (LAPI) with a machine login,
-can add and remove decisions when Allow changes is on, and has a demo data
-source.
+can add and remove decisions when Allow changes is on. LAPI is its only
+source: the demo data source was removed in 0.1.1 (see "Screenshots and
+the demo data source" below).
 
 Before editing this plugin, read `skills/creating-plugins/SKILL.md` completely. Codex discovers the same directory through `.agents/skills`. Claude discovers it through `.claude/skills` and reads these instructions through `.claude/CLAUDE.md`.
 Keep `emdash-plugin.jsonc` aligned with the runtime implementation, declare every capability and host the plugin uses, and run the generated validation, typecheck, test, and build scripts after changes.
@@ -47,16 +48,18 @@ plain `pnpm install` is enough.
   (`blocklists: "include"`) and the daily count (`origin=CAPI`/`lists`). On a
   live site the blocklist was 71 alerts, 24,004 decisions and 3.5 MB.
   `isBlocklistAlert` and `isBlocklistDecision` (`src/lapi/blocklist.ts`)
-  keep it out of every count even when LAPI sends it. `runPurge` took out
-  rows a pre-release build stored. It runs once per install, and only on
-  installs that synced before the fix.
+  keep it out of every count even when LAPI sends it. 0.1.0 took out the rows a
+  pre-release build stored (`runPurge`, removed in 0.1.1 once every 0.1.0
+  install had run it).
 - **Self-hosted only.** Everything comes from the site's own LAPI and
   Prometheus endpoints. Never call CrowdSec's cloud or Service API.
 - **Metrics are counters that reset.** `src/metrics/sample.ts` keeps the
   last raw sample and stores differences, a drop being a reset. The first
   sample is a baseline, and a source that was down at the baseline starts
   its own. The sampler is its own cron task (`metrics`, seven calls),
-  because the sync tick has no calls to spare.
+  because the sync tick has no calls to spare. It runs only while a metrics
+  URL is set (`metricsOn`): a sync tick that finds that changed schedules
+  or cancels it.
 - **One action id per button.** A shared `action_id` makes React warn about
   duplicate keys. Range buttons are `cs:range:24h`, `cs:range:7d` and so on,
   and row buttons carry the row's id.
@@ -88,11 +91,28 @@ plain `pnpm install` is enough.
 - **Charts are `custom`, not `timeseries`.** A timeseries tooltip shows a
   day as a timestamp in the viewer's zone. `dailyChart` in
   `src/ui/blocks.ts` uses a category axis of day labels.
+- **Alerts live in the alert log, not one row each.** `src/store/log.ts`.
+  A sync step writes one chunk per local day without a read, and the
+  hourly `reconcile` task (`runMaintenance`) merges a hundred chunks into
+  day parts, or at 3 am local time runs the prune. The `alerts`
+  collection only holds rows 0.1.0 stored until `runMigrate` moves them.
+  A deleted alert is taken out of its day's log rows (`removeFromLog`).
 - **The nightly prune shares its batches.** `runReconcile` has four
-  query-and-delete batches for alert rows and day rows together, so a store
-  with many old alert rows can leave old day rows for the next night. It
-  catches up within a few nights, and day rows are one per day, so this is
-  left as it is.
+  query-and-delete batches for every collection together, so a store with
+  many old rows can leave some for the next night. It catches up within a
+  few nights, so this is left as it is.
+- **A Block Kit answer holds 2,000 JSON nodes at most.** The host refuses
+  a bigger one with a 502. Charts cost a node per point per series, so
+  the 90-day CrowdSec page draws three days a bar, the explorer caps day
+  histograms at 45 bars and its filter selects at twelve options, and
+  `tests/pages.test.ts` renders every explorer view under 1,900.
+- **The bundle is capped at 128 KB.** `pnpm bundle` refuses a
+  `backend.js` over 128 KB, and 0.1.1 aims to stay under 120 KB. Message
+  keys are short codes (`m0`, `m1`, ...) with their names in comments in
+  `src/i18n.ts`, since every key is in the bundle twice: search the
+  catalogue for a message's name. `t()` shows an unknown key as itself, so
+  a problem a 0.1.0 install stored under a long key does not throw. Check
+  `wc -c dist/plugin.mjs` after `pnpm build` for any change that adds code.
 - **Block Kit keys are snake_case.** Use the constructors in
   `src/ui/blocks.ts`. The renderer silently ignores camelCase.
 - **MCP schemas never reach the runtime.** `src/tools/declare.ts` is
@@ -100,10 +120,56 @@ plain `pnpm install` is enough.
   zod stays a dev dependency. Output schemas are strict, and
   `tests/tools.test.ts` checks each answer against the one the build wrote.
 - **Block Kit keeps no state.** Filters, sort order and positions travel in
-  action ids, button values and table cursors (see `src/ui/alerts.ts`).
+  action ids, button values and table cursors. The explorer's whole view
+  rides after a `|` in every action id (`src/explorer/model.ts`), and the
+  control's role before it, so no two ids repeat.
 - **Test URLs match to the character.** `respondSearch` in `tests/host.ts`
   answers every URL a run could build over a few seconds, since `since` and
   `until` come from the run's clock.
+
+## Screenshots and the demo data source
+
+The demo data source (generated alerts, traffic history, a blocklist count
+and write controls that change nothing) was removed in 0.1.1 to fit the
+128 KB bundle limit. Its last state is on branch `archive/demo-data`, with
+the 0.1.1 explorer. To use it for registry screenshots, bring it into a
+throwaway local branch (`git switch -c screenshots archive/demo-data`, or
+merge or cherry-pick it onto the current work), build, install that build
+on a filler site, take the screenshots, and delete the branch. Never
+publish that build.
+
+The other way is to seed the plugin's storage directly on the filler site,
+as `tests/seed.ts` does in the tests (`seedStore`). The records:
+
+- **`log`** (indexes `day`, `part`), id `<day>|c<lowest alert id>` for a
+  chunk or `<day>|p<n>` for a merged part: `{ day: "YYYY-MM-DD", part:
+  "chunk" | "part", alerts: LogAlert[], updatedAt }`. A `LogAlert` is
+  `{ i: id, t: start ms, k: "w" | "b" | "h" | "m" (WAF, bot, behaviour,
+  manual), s: scenario, a: source address, c: country code, o: AS
+  organisation, p: first path, d: decisions, b: bans, y?: first decision
+  type, u?: last decision end ms, m?: machine_id }` (`src/store/log.ts`).
+- **`days`** (index `date`), id the date: `DayRow` in `src/store/rows.ts`,
+  the day's totals by kind, decisions and bans, top-25 maps of
+  `scenarios`, `countries`, `asNames`, `paths`, `ips` and `machines`, and
+  `seen`, the counted alert ids as sorted inclusive ranges. Build it with
+  `emptyDay` and `countInto` from the alerts, then `trimDay`.
+- **`traffic`** (index `date`), id the date: `{ date, counters, samples,
+  updatedAt }`, counters keyed as in `src/metrics/sample.ts`
+  (`drop.packets.community`, `proc.packets`, `as.reqs`, `ch.requested`).
+- **KV `sync.state`**: at least `{ dataset, head, gaps: [], floor,
+  lastSync, logMigrated: true }`. `dataset` must equal `datasetOf(settings)`
+  (`lapi|<LAPI URL>|<include simulated>|<zone>`), or the next sync wipes
+  the store. `hours` (UTC hour buckets for the last 48 hours) and `active`
+  (the ban count) feed the 24-hour view and the card.
+- **KV `sync.metrics`** (`MetricsState` in `src/sync/scheduler.ts`) and
+  **`sync.blocklist`** (`{ at, addresses }`) feed the traffic charts'
+  hourly view and the blocklist line.
+
+Leave the LAPI settings empty on the filler site. Unusable settings pause
+the sync and keep every stored row, but each tick records the problem in
+`sync.state`, which the pages show: write the state again just before the
+screenshots. The setup check and the live CrowdSec decisions page need a
+LAPI, so seeding cannot show those.
 
 ## Conventions
 

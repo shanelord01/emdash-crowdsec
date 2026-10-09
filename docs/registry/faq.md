@@ -16,17 +16,20 @@ It lists your own decisions. The community blocklist and lists hold thousands mo
 **Why is the top list approximate?**
 Each day keeps its 25 most frequent values, so rarer ones are undercounted.
 
+**Where are the reputation badges?**
+The plugin never asks CrowdSec's cloud. The explorer shows local hints: Banned now and Seen before.
+
+**My LAPI collects alerts from several hosts.**
+Each alert keeps the engine that raised it. Name them in the Engine names setting.
+
 **Why can't I delete this alert?**
 Deleting it would delete its decisions where bouncers never hear of it. Remove the decision, then delete the alert two minutes later.
 
 **Why was my ban refused?**
-The message names the rule that protects the address. The README lists them all.
-
-**Does the plugin store the LAPI token?**
-No. It logs in once per run. The machine password is saved encrypted.
+The message names the rule. The README lists them all.
 
 **Where do the traffic charts come from?**
 Your engine's and firewall bouncer's own metrics, never CrowdSec's cloud. Set their URLs in the settings.
 
 **Which time zone are the days in?**
-The Time zone setting, `Australia/Sydney` unless changed. A name the server does not know pauses the sync until it is fixed, and stored history is kept.
+The Time zone setting, `Australia/Sydney` unless changed. An unknown name pauses the sync, and history is kept.

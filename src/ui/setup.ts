@@ -26,7 +26,7 @@ import { actions, banner, button, code, context, header, table, type SecurityBlo
 import { formatAge } from "./format.js";
 import { RANGE_ACTION, SETUP_ACTION } from "./ids.js";
 
-export type CheckId = "source" | "timeZone" | "settings" | "url" | "engineMetrics" | "firewallMetrics" | "login" | "userAgent" | "read" | "changes" | "protections" | "scheduler" | "lastSync";
+export type CheckId = "timeZone" | "settings" | "url" | "engineMetrics" | "firewallMetrics" | "login" | "userAgent" | "read" | "changes" | "protections" | "scheduler" | "lastSync";
 export type CheckStatus = "ok" | "problem" | "waiting" | "skipped";
 
 export interface Check {
@@ -45,19 +45,13 @@ export async function runSetup(ctx: PluginContext, loaded: Loaded, result: Setti
 	const counted = ctx.http
 		? { ...ctx, http: { fetch: (u: string, init?: RequestInit) => ((budget.spent++, ctx.http!.fetch(u, init))) } }
 		: ctx;
-	const zoneBad = !result.ok && result.problem.key === "timeZoneInvalid";
+	const zoneBad = !result.ok && result.problem.key === "m6g";
 	const tasks = ctx.cron ? await ctx.cron.list() : null;
 
-	if (settings.source === "demo") {
-		checks.push({ id: "source", status: "ok", detail: t(lang, "sourceDemo") });
-		checks.push(zoneCheck(result, settings, lang));
-	} else {
-		checks.push({ id: "source", status: "ok", detail: t(lang, "sourceLapi") });
-		checks.push(zoneCheck(result, settings, lang));
-		// With only the zone wrong, the LAPI checks still run: everything else is usable.
-		checks.push(...(await lapiChecks(counted as PluginContext, settings, zoneBad ? { ok: true, settings } : result, now, lang)));
-		checks.push(...(await protectionChecks(counted as PluginContext, settings, loaded, now, lang, budget)));
-	}
+	checks.push(zoneCheck(result, settings, lang));
+	// With only the zone wrong, the LAPI checks still run: everything else is usable.
+	checks.push(...(await lapiChecks(counted as PluginContext, settings, zoneBad ? { ok: true, settings } : result, now, lang)));
+	checks.push(...(await protectionChecks(counted as PluginContext, settings, loaded, now, lang, budget)));
 
 	checks.push(...(await metricsChecks(counted as PluginContext, settings, lang, budget)));
 	checks.push(schedulerCheck(tasks, loaded, now, lang), lastSyncCheck(loaded, now, lang));
@@ -65,31 +59,31 @@ export async function runSetup(ctx: PluginContext, loaded: Loaded, result: Setti
 }
 
 function zoneCheck(result: SettingsResult, settings: CrowdSecSettings, lang: Lang): Check {
-	if (!result.ok && result.problem.key === "timeZoneInvalid") return { id: "timeZone", status: "problem", detail: problemText(lang, result.problem) };
+	if (!result.ok && result.problem.key === "m6g") return { id: "timeZone", status: "problem", detail: problemText(lang, result.problem) };
 	return { id: "timeZone", status: "ok", detail: settings.timeZone };
 }
 
 async function lapiChecks(ctx: PluginContext, settings: CrowdSecSettings, result: SettingsResult, now: Date, lang: Lang): Promise<Check[]> {
 	const skip = (id: CheckId, reason: MessageKey): Check => ({ id, status: "skipped", detail: t(lang, reason) });
-	if (!result.ok && result.problem.key === "notConfigured") {
+	if (!result.ok && result.problem.key === "m6y") {
 		const detail = [problemText(lang, result.problem)];
-		if (result.missing.includes("machinePassword")) detail.push(t(lang, "encryptionHint"));
+		if (result.missing.includes("machinePassword")) detail.push(t(lang, "m69"));
 		return [
 			{ id: "settings", status: "problem", detail: detail.join(" ") },
-			skip("url", "needsSettings"),
-			skip("login", "needsSettings"),
-			skip("userAgent", "needsSettings"),
-			skip("read", "needsSettings"),
+			skip("url", "m6a"),
+			skip("login", "m6a"),
+			skip("userAgent", "m6a"),
+			skip("read", "m6a"),
 		];
 	}
-	const out: Check[] = [{ id: "settings", status: "ok", detail: t(lang, "settingsSaved") }];
+	const out: Check[] = [{ id: "settings", status: "ok", detail: t(lang, "m68") }];
 	if (!result.ok) {
 		// The URL itself cannot be used, and `readSettings` never hands it on.
-		return [...out, { id: "url", status: "problem", detail: problemText(lang, result.problem) }, skip("login", "needsUrl"), skip("userAgent", "needsUrl"), skip("read", "needsUrl")];
+		return [...out, { id: "url", status: "problem", detail: problemText(lang, result.problem) }, skip("login", "m6b"), skip("userAgent", "m6b"), skip("read", "m6b")];
 	}
 	out.push({ id: "url", status: "ok", detail: settings.lapiUrl });
 
-	if (!ctx.http) return [...out, { id: "login", status: "problem", detail: t(lang, "noNetwork") }];
+	if (!ctx.http) return [...out, { id: "login", status: "problem", detail: t(lang, "m6z") }];
 	const http = ctx.http;
 	const client = new LapiClient({
 		baseUrl: settings.lapiUrl,
@@ -100,30 +94,30 @@ async function lapiChecks(ctx: PluginContext, settings: CrowdSecSettings, result
 
 	const login = await client.login();
 	if (!login.ok) {
-		const refused = login.problem.key === "loginRefused";
+		const refused = login.problem.key === "m71";
 		return [
 			...out,
 			{ id: "login", status: "problem", detail: problemText(lang, login.problem) },
 			refused
-				? { id: "userAgent", status: "problem", detail: t(lang, "userAgentMaybe", { ua: USER_AGENT }) }
-				: skip("userAgent", "needsLogin"),
-			skip("read", "needsLogin"),
+				? { id: "userAgent", status: "problem", detail: t(lang, "m6l", { ua: USER_AGENT }) }
+				: skip("userAgent", "m6c"),
+			skip("read", "m6c"),
 		];
 	}
-	out.push({ id: "login", status: "ok", detail: t(lang, "loginOk", { machine: settings.machineId }) });
-	out.push({ id: "userAgent", status: "ok", detail: t(lang, "userAgentOk", { ua: USER_AGENT }) });
+	out.push({ id: "login", status: "ok", detail: t(lang, "m6j", { machine: settings.machineId }) });
+	out.push({ id: "userAgent", status: "ok", detail: t(lang, "m6k", { ua: USER_AGENT }) });
 
 	const read = await client.alerts({ since: new Date(now.getTime() - 3_600_000), limit: 1, simulated: settings.includeSimulated });
-	out.push(read.ok ? { id: "read", status: "ok", detail: t(lang, "readOk") } : { id: "read", status: "problem", detail: problemText(lang, read.problem) });
+	out.push(read.ok ? { id: "read", status: "ok", detail: t(lang, "m6m") } : { id: "read", status: "problem", detail: problemText(lang, read.problem) });
 	return out;
 }
 
 async function protectionChecks(ctx: PluginContext, settings: CrowdSecSettings, loaded: Loaded, now: Date, lang: Lang, budget: { spent: number }): Promise<Check[]> {
-	if (!settings.allowChanges) return [{ id: "changes", status: "ok", detail: t(lang, "changesOffDetail") }];
-	const out: Check[] = [{ id: "changes", status: "ok", detail: t(lang, "changesOnDetail") }];
+	if (!settings.allowChanges) return [{ id: "changes", status: "ok", detail: t(lang, "m6n") }];
+	const out: Check[] = [{ id: "changes", status: "ok", detail: t(lang, "m6o") }];
 	const names = namesToResolve(ctx.site.url, settings.lapiUrl);
 	if (names.length === 0 || !ctx.http) {
-		out.push({ id: "protections", status: "ok", detail: t(lang, "protectionsLiteral") });
+		out.push({ id: "protections", status: "ok", detail: t(lang, "m6p") });
 		return out;
 	}
 	let dns = dnsFresh(loaded.dns, names, now) ? loaded.dns : null;
@@ -144,10 +138,10 @@ async function protectionChecks(ctx: PluginContext, settings: CrowdSecSettings, 
 	out.push({
 		id: "protections",
 		status: "ok",
-		detail: t(lang, "protectionsOk", { site: describe(site), lapi: describe(lapi), count: settings.protectedAddresses.length }),
+		detail: t(lang, "m6q", { site: describe(site), lapi: describe(lapi), count: settings.protectedAddresses.length }),
 	});
 	if (settings.protectedInvalid.length > 0) {
-		out.push({ id: "protections", status: "problem", detail: t(lang, "protectedInvalid", { entries: settings.protectedInvalid.join(", ") }) });
+		out.push({ id: "protections", status: "problem", detail: t(lang, "m50", { entries: settings.protectedInvalid.join(", ") }) });
 	}
 	return out;
 }
@@ -163,24 +157,20 @@ async function metricsChecks(ctx: PluginContext, settings: CrowdSecSettings, lan
 		["engineMetrics", settings.engineMetricsUrl, settings.metricsProblems.engine, "engine"],
 		["firewallMetrics", settings.firewallMetricsUrl, settings.metricsProblems.firewall, "firewall"],
 	] as const) {
-		if (settings.source === "demo") {
-			out.push({ id, status: "ok", detail: t(lang, "sourceDemo") });
-			continue;
-		}
 		if (problem) {
 			out.push({ id, status: "problem", detail: problemText(lang, problem) });
 			continue;
 		}
 		if (!url) {
-			out.push({ id, status: "skipped", detail: t(lang, "metricsOff") });
+			out.push({ id, status: "skipped", detail: t(lang, "m5w") });
 			continue;
 		}
 		if (!ctx.http) {
-			out.push({ id, status: "problem", detail: t(lang, "noNetwork") });
+			out.push({ id, status: "problem", detail: t(lang, "m6z") });
 			continue;
 		}
 		if (budget.spent + 1 > 10) {
-			out.push({ id, status: "waiting", detail: t(lang, "metricsDeferred") });
+			out.push({ id, status: "waiting", detail: t(lang, "m5z") });
 			continue;
 		}
 		const http = ctx.http;
@@ -193,17 +183,17 @@ async function metricsChecks(ctx: PluginContext, settings: CrowdSecSettings, lan
 		const expected = [...KEPT_SERIES].filter((n) => (kind === "firewall" ? n.startsWith("fw_") : n.startsWith("cs_")));
 		out.push(
 			names.length > 0
-				? { id, status: "ok", detail: t(lang, "metricsOk", { count: names.length, names: names.join(", ") }) }
-				: { id, status: "problem", detail: t(lang, "metricsNone", { expected: expected.join(", ") }) },
+				? { id, status: "ok", detail: t(lang, "m5x", { count: names.length, names: names.join(", ") }) }
+				: { id, status: "problem", detail: t(lang, "m5y", { expected: expected.join(", ") }) },
 		);
 	}
 	return out;
 }
 
 function schedulerCheck(tasks: Array<{ name: string; schedule: string; nextRunAt: string; lastRunAt: string | null }> | null, loaded: Loaded, now: Date, lang: Lang): Check {
-	if (!tasks) return { id: "scheduler", status: "problem", detail: t(lang, "syncUnschedulable") };
+	if (!tasks) return { id: "scheduler", status: "problem", detail: t(lang, "m1c") };
 	const sync = tasks.find((task) => task.name === SYNC_TASK);
-	if (!sync) return { id: "scheduler", status: "problem", detail: t(lang, "schedulerNotScheduled") };
+	if (!sync) return { id: "scheduler", status: "problem", detail: t(lang, "m6r") };
 	const minutes = intervalMinutes(sync.schedule);
 	const interval = minutes % 60 === 0 ? t(lang, "hours", { count: minutes / 60 }) : t(lang, "minutes", { count: minutes });
 	const late = (iso: string | null | undefined, graceMs: number) => Boolean(iso) && now.getTime() - Date.parse(iso!) > graceMs;
@@ -211,17 +201,17 @@ function schedulerCheck(tasks: Array<{ name: string; schedule: string; nextRunAt
 
 	const refresh = tasks.find((task) => task.name === REFRESH_TASK);
 	if (refresh && late(refresh.nextRunAt, ONESHOT_GRACE_MS)) {
-		return { id: "scheduler", status: "problem", detail: t(lang, "schedulerRefreshStuck", { age: age(refresh.nextRunAt) }) };
+		return { id: "scheduler", status: "problem", detail: t(lang, "m6w", { age: age(refresh.nextRunAt) }) };
 	}
 	const grace = 2 * minutes * 60_000;
 	if (sync.lastRunAt) {
-		if (late(sync.lastRunAt, grace)) return { id: "scheduler", status: "problem", detail: t(lang, "schedulerStale", { age: age(sync.lastRunAt), interval }) };
-		return { id: "scheduler", status: "ok", detail: t(lang, "schedulerOk", { age: age(sync.lastRunAt), interval }) };
+		if (late(sync.lastRunAt, grace)) return { id: "scheduler", status: "problem", detail: t(lang, "m6u", { age: age(sync.lastRunAt), interval }) };
+		return { id: "scheduler", status: "ok", detail: t(lang, "m6t", { age: age(sync.lastRunAt), interval }) };
 	}
 	if (!loaded.state.lastSync && loaded.waiting && late(loaded.waiting, grace)) {
-		return { id: "scheduler", status: "problem", detail: t(lang, "schedulerNeverRan", { age: age(loaded.waiting), interval }) };
+		return { id: "scheduler", status: "problem", detail: t(lang, "m6v", { age: age(loaded.waiting), interval }) };
 	}
-	return { id: "scheduler", status: "waiting", detail: t(lang, "schedulerWaiting", { interval }) };
+	return { id: "scheduler", status: "waiting", detail: t(lang, "m6s", { interval }) };
 }
 
 function lastSyncCheck(loaded: Loaded, now: Date, lang: Lang): Check {
@@ -229,10 +219,10 @@ function lastSyncCheck(loaded: Loaded, now: Date, lang: Lang): Check {
 	if (state.lastProblem) {
 		const error = problemText(lang, state.lastProblem);
 		const at = formatAge(state.lastErrorAt, now, lang);
-		return { id: "lastSync", status: "problem", detail: at ? t(lang, "lastAttemptFailedAge", { age: at, error }) : t(lang, "lastAttemptFailed", { error }) };
+		return { id: "lastSync", status: "problem", detail: at ? t(lang, "m14", { age: at, error }) : t(lang, "m13", { error }) };
 	}
 	const age = formatAge(state.lastSync, now, lang);
-	if (!age) return { id: "lastSync", status: "waiting", detail: t(lang, "notSynced") };
+	if (!age) return { id: "lastSync", status: "waiting", detail: t(lang, "m11") };
 	return { id: "lastSync", status: "ok", detail: t(lang, "synced", { age }) };
 }
 
@@ -247,26 +237,25 @@ export function intervalMinutes(schedule: string): number {
 }
 
 const CHECK_LABELS: Record<CheckId, MessageKey> = {
-	source: "checkSource",
-	timeZone: "checkTimeZone",
-	engineMetrics: "checkEngineMetrics",
-	firewallMetrics: "checkFirewallMetrics",
-	settings: "checkSettings",
-	url: "checkUrl",
-	login: "checkLogin",
-	userAgent: "checkUserAgent",
-	read: "checkRead",
-	changes: "checkChanges",
-	protections: "checkProtections",
-	scheduler: "checkScheduler",
-	lastSync: "checkLastSync",
+	timeZone: "m5t",
+	engineMetrics: "m5u",
+	firewallMetrics: "m5v",
+	settings: "m5s",
+	url: "m60",
+	login: "m61",
+	userAgent: "m62",
+	read: "m63",
+	changes: "m64",
+	protections: "m65",
+	scheduler: "m66",
+	lastSync: "m67",
 };
 
 const STATUS_LABELS: Record<CheckStatus, MessageKey> = {
-	ok: "statusOk",
-	problem: "statusProblem",
-	waiting: "statusWaiting",
-	skipped: "statusSkipped",
+	ok: "m5o",
+	problem: "m5p",
+	waiting: "m5q",
+	skipped: "m5r",
 };
 
 const CRON_TRIGGER_SNIPPET = `// wrangler.jsonc
@@ -277,20 +266,20 @@ export function renderSetup(checks: Check[], backRange: number, lang: Lang): Sec
 	const out: SecurityBlock[] = [
 		actions(
 			[
-				button(`${RANGE_ACTION}:back`, t(lang, "backToSecurity"), { style: "secondary", value: backRange }),
-				button(SETUP_ACTION, t(lang, "checkAgain"), { style: "secondary", value: backRange }),
+				button(`${RANGE_ACTION}:back`, t(lang, "m5j"), { style: "secondary", value: backRange }),
+				button(SETUP_ACTION, t(lang, "m5k"), { style: "secondary", value: backRange }),
 			],
 			{ blockId: "cs:setup:controls" },
 		),
-		header(t(lang, "setupTitle")),
-		problems > 0 ? banner({ description: t(lang, "setupProblems", { count: problems }), variant: "error" }) : banner({ description: t(lang, "setupAllGood") }),
+		header(t(lang, "m5g")),
+		problems > 0 ? banner({ description: t(lang, "m5i", { count: problems }), variant: "error" }) : banner({ description: t(lang, "m5h") }),
 		table({
 			blockId: "cs:setup:checks",
 			pageActionId: "cs:setup:checks:page",
 			columns: [
-				{ key: "check", label: t(lang, "colCheck"), format: "text" },
-				{ key: "status", label: t(lang, "colStatus"), format: "badge" },
-				{ key: "detail", label: t(lang, "colDetails"), format: "text" },
+				{ key: "check", label: t(lang, "m5l"), format: "text" },
+				{ key: "status", label: t(lang, "m5m"), format: "badge" },
+				{ key: "detail", label: t(lang, "m5n"), format: "text" },
 			],
 			rows: checks.map((check) => ({
 				check: t(lang, CHECK_LABELS[check.id]),
@@ -300,7 +289,7 @@ export function renderSetup(checks: Check[], backRange: number, lang: Lang): Sec
 		}),
 	];
 	if (checks.some((check) => check.id === "scheduler" && check.status === "problem")) {
-		out.push(context(t(lang, "schedulerHowTo")));
+		out.push(context(t(lang, "m6x")));
 		out.push(code(CRON_TRIGGER_SNIPPET, { language: "jsonc" }));
 	}
 	return out;

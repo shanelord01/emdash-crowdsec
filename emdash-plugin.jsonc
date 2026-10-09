@@ -59,11 +59,15 @@
 	"allowedHosts": [],
 
 	"storage": {
-		// One row per alert, a few hundred bytes of LAPI's ~13 KB. The Alerts
-		// page filters on `kind` and `scenario` and orders by `startedAt`,
-		// and storage rejects a where or orderBy on an undeclared index.
-		// `startedAt` is also the retention prune's key.
+		// One row per alert, as 0.1.0 stored them. Nothing writes here now:
+		// the sync moves these rows into `log` and deletes them.
 		"alerts": { "indexes": ["startedAt", "kind", "scenario", "ip"] },
+
+		// The alert log the Alerts explorer reads: a few hundred bytes per
+		// alert, kept in arrays. A sync step writes one chunk per local day,
+		// and the hourly maintenance run merges a closed day's chunks into
+		// parts of up to 1,500 alerts. `day` is the read and prune key.
+		"log": { "indexes": ["day", "part"] },
 
 		// One row per local day: totals by kind, bans issued, the day's top
 		// 25 scenarios, countries, AS organisations, paths and addresses, and
@@ -84,16 +88,6 @@
 		// EMDASH_ENCRYPTION_KEY. Without that key, saving throws rather than
 		// storing the password in plain text, and the setup check says so.
 		"settingsSchema": {
-			"source": {
-				"type": "select",
-				"label": "Data source",
-				"default": "lapi",
-				"options": [
-					{ "value": "lapi", "label": "CrowdSec Local API" },
-					{ "value": "demo", "label": "Demo data (generated, not real alerts)" }
-				],
-				"description": "Demo data needs no CrowdSec and fills the pages with generated alerts. Switching clears the stored alerts."
-			},
 			"lapiUrl": {
 				"type": "string",
 				"label": "LAPI URL",
@@ -160,6 +154,12 @@
 				"label": "Protected addresses",
 				"multiline": true,
 				"description": "Addresses and ranges a ban must never cover, separated by commas or new lines: your server, your home, your office. Your own address, this site's and the LAPI host's are protected as well."
+			},
+			"engineNames": {
+				"type": "string",
+				"label": "Engine names",
+				"multiline": true,
+				"description": "Optional. Names for the CrowdSec agents that send alerts to this LAPI, one machine_id = Name per line or separated by commas, for example: edge-machine = Edge, web-machine = Web. Without a name, the alerts page shows the machine id."
 			}
 		},
 

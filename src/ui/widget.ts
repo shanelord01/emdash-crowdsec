@@ -8,7 +8,6 @@
  */
 
 import { t, type Lang } from "../i18n.js";
-import type { SourceId } from "../settings.js";
 import { coveredSince, sumHours, type SyncState } from "../sync/scheduler.js";
 import { actions, button, context, empty, link, stats, table, type SecurityBlock } from "./blocks.js";
 import { comparisonText, formatAge, formatCount, formatShort, trendOf } from "./format.js";
@@ -23,7 +22,6 @@ const HOUR_MS = 3_600_000;
 
 export interface WidgetInput {
 	state: SyncState;
-	source: SourceId;
 	zone: string;
 	now: Date;
 	lang: Lang;
@@ -33,13 +31,13 @@ export interface WidgetInput {
 	sampledSince?: string;
 }
 
-export function renderWidget({ state, source, zone, now, lang, traffic, sampledSince }: WidgetInput): SecurityBlock[] {
+export function renderWidget({ state, zone, now, lang, traffic, sampledSince }: WidgetInput): SecurityBlock[] {
 	const nowMs = now.getTime();
 	const current = sumHours(state, nowMs - 24 * HOUR_MS, nowMs + HOUR_MS);
 	const previous = sumHours(state, nowMs - 48 * HOUR_MS, nowMs - 24 * HOUR_MS);
 
 	if (!state.lastSync && current.alerts === 0) {
-		return [empty({ title: t(lang, "noDataYet"), description: emptyReason(state, lang) }), controls(lang)];
+		return [empty({ title: t(lang, "m0"), description: emptyReason(state, lang) }), controls(lang)];
 	}
 
 	// A previous day the store does not fully reach is "no history yet",
@@ -59,15 +57,15 @@ export function renderWidget({ state, source, zone, now, lang, traffic, sampledS
 				...(trend && { trend }),
 			},
 			{
-				label: t(lang, "activeBans"),
+				label: t(lang, "md"),
 				value: active ? `${formatCount(active.bans, lang)}${active.truncated ? "+" : ""}` : "-",
-				description: active ? t(lang, "asOf", { age: formatAge(active.at, now, lang) ?? "" }) : t(lang, "notCountedYet"),
+				description: active ? t(lang, "me", { age: formatAge(active.at, now, lang) ?? "" }) : t(lang, "mf"),
 			},
 		]),
 		stats([
-			{ label: t(lang, "kindWaf"), value: formatCount(current.waf, lang) },
-			{ label: t(lang, "kindBot"), value: formatCount(current.bot, lang) },
-			{ label: t(lang, "kindBehaviour"), value: formatCount(current.behaviour, lang) },
+			{ label: t(lang, "m9"), value: formatCount(current.waf, lang) },
+			{ label: t(lang, "ma"), value: formatCount(current.bot, lang) },
+			{ label: t(lang, "mb"), value: formatCount(current.behaviour, lang) },
 		]),
 	];
 
@@ -84,8 +82,8 @@ export function renderWidget({ state, source, zone, now, lang, traffic, sampledS
 		out.push(
 			stats([
 				{
-					label: t(lang, "discardedWeek"),
-					value: t(lang, "packetsShort", { count: formatShort(week, lang) }),
+					label: t(lang, "m28"),
+					value: t(lang, "m29", { count: formatShort(week, lang) }),
 					description: comparisonText(week, before, lang),
 					...(weekTrend && { trend: weekTrend }),
 				},
@@ -100,15 +98,15 @@ export function renderWidget({ state, source, zone, now, lang, traffic, sampledS
 				blockId: "cs:widget:scenarios",
 				pageActionId: "cs:widget:scenarios:page",
 				columns: [
-					{ key: "scenario", label: t(lang, "colTopScenarios"), format: "code" },
-					{ key: "alerts", label: t(lang, "colAlerts"), format: "number" },
+					{ key: "scenario", label: t(lang, "mg"), format: "code" },
+					{ key: "alerts", label: t(lang, "mh"), format: "number" },
 				],
 				rows: top.map(([scenario, alerts]) => ({ scenario, alerts })),
 			}),
 		);
 	}
 
-	out.push(context(statusLine(state, source, now, lang, zone)));
+	out.push(context(statusLine(state, now, lang, zone)));
 	out.push(controls(lang));
 	return out;
 }
@@ -116,6 +114,6 @@ export function renderWidget({ state, source, zone, now, lang, traffic, sampledS
 function controls(lang: Lang) {
 	return actions([
 		button(WIDGET_REFRESH, t(lang, "refresh"), { style: "secondary" }),
-		link(t(lang, "openSecurity"), { kind: "plugin-page", path: SECURITY_PATH }, { appearance: "secondary" }),
+		link(t(lang, "m4"), { kind: "plugin-page", path: SECURITY_PATH }, { appearance: "secondary" }),
 	]);
 }

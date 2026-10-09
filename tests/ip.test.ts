@@ -27,7 +27,7 @@ describe("parsing", () => {
 		expect(parseNetwork("1.2.3.4::")).toBeNull();
 		expect(parseNetwork("1.2.3.4::1")).toBeNull();
 		expect(parseNetwork("::ffff:1.2.3.4")).not.toBeNull();
-		expect(checkBanTarget("203.0.113.7/24", [])).toMatchObject({ ok: false, reason: "hostBits", meant: "203.0.113.0/24" });
+		expect(checkBanTarget("203.0.113.7/24", [])).toMatchObject({ ok: false, reason: "m7v", meant: "203.0.113.0/24" });
 	});
 
 	it("compares address text by value", () => {
@@ -51,10 +51,10 @@ describe("ban targets", () => {
 	});
 
 	it("refuses ranges wider than /16 for IPv4 and /48 for IPv6, the whole internet included", () => {
-		expect(checkBanTarget("203.0.0.0/15", [])).toMatchObject({ ok: false, reason: "rangeTooWide" });
-		expect(checkBanTarget("2a00:1450::/47", [])).toMatchObject({ ok: false, reason: "rangeTooWide" });
-		expect(checkBanTarget("0.0.0.0/0", [])).toMatchObject({ ok: false, reason: "rangeTooWide" });
-		expect(checkBanTarget("::/0", [])).toMatchObject({ ok: false, reason: "rangeTooWide" });
+		expect(checkBanTarget("203.0.0.0/15", [])).toMatchObject({ ok: false, reason: "m7r" });
+		expect(checkBanTarget("2a00:1450::/47", [])).toMatchObject({ ok: false, reason: "m7r" });
+		expect(checkBanTarget("0.0.0.0/0", [])).toMatchObject({ ok: false, reason: "m7r" });
+		expect(checkBanTarget("::/0", [])).toMatchObject({ ok: false, reason: "m7r" });
 	});
 
 	it("refuses private, loopback, link-local, CGNAT, multicast and unspecified space", () => {
@@ -74,12 +74,12 @@ describe("ban targets", () => {
 			"fd12:3456::1",
 			"ff02::1",
 		]) {
-			expect(checkBanTarget(text, []), text).toMatchObject({ ok: false, reason: "reservedAddress" });
+			expect(checkBanTarget(text, []), text).toMatchObject({ ok: false, reason: "m7s" });
 		}
 	});
 
 	it("refuses a range that only partly overlaps reserved space", () => {
-		expect(checkBanTarget("100.64.0.0/16", [])).toMatchObject({ ok: false, reason: "reservedAddress" });
+		expect(checkBanTarget("100.64.0.0/16", [])).toMatchObject({ ok: false, reason: "m7s" });
 	});
 
 	it("names the rule that protects an address: the caller's, the site's, the LAPI host's, the setting's", () => {
@@ -100,10 +100,10 @@ describe("ban targets", () => {
 		const list = [entry("198.51.100.7", "caller")];
 		expect(checkBanTarget("::ffff:198.51.100.7", list)).toMatchObject({ ok: false, reason: "protectedAddress", rule: "caller" });
 		expect(checkBanTarget("::ffff:c633:6407", list)).toMatchObject({ ok: false, reason: "protectedAddress" });
-		expect(checkBanTarget("::ffff:10.0.0.1", [])).toMatchObject({ ok: false, reason: "reservedAddress" });
-		expect(checkBanTarget("::ffff:0:0/96", [])).toMatchObject({ ok: false, reason: "rangeTooWide" });
+		expect(checkBanTarget("::ffff:10.0.0.1", [])).toMatchObject({ ok: false, reason: "m7s" });
+		expect(checkBanTarget("::ffff:0:0/96", [])).toMatchObject({ ok: false, reason: "m7r" });
 		// An IPv6 range that covers the whole mapped block is refused as well.
-		expect(checkBanTarget("::/64", [])).toMatchObject({ ok: false, reason: "reservedAddress" });
+		expect(checkBanTarget("::/64", [])).toMatchObject({ ok: false, reason: "m7s" });
 		// A protected entry written in mapped form protects the IPv4 address too.
 		expect(checkBanTarget("198.51.100.8", [entry("::ffff:198.51.100.8", "setting")])).toMatchObject({ ok: false, rule: "setting" });
 		// An allowed mapped address is sent to LAPI as plain IPv4.
@@ -123,14 +123,14 @@ describe("IPv6 blocks that carry an IPv4 address", () => {
 		const list = [entry("198.51.100.7", "caller")];
 		expect(checkBanTarget("64:ff9b::c633:6407", list)).toMatchObject({ ok: false, reason: "protectedAddress", rule: "caller" });
 		expect(checkBanTarget("2002:c633:6407::1", list)).toMatchObject({ ok: false, reason: "protectedAddress", rule: "caller" });
-		expect(checkBanTarget("64:ff9b::a00:1", [])).toMatchObject({ ok: false, reason: "reservedAddress" }); // 10.0.0.1
-		expect(checkBanTarget("2002:c0a8:101::/48", [])).toMatchObject({ ok: false, reason: "reservedAddress" }); // 192.168.1.1
-		expect(checkBanTarget("64:ff9b::/100", [])).toMatchObject({ ok: false, reason: "rangeTooWide" }); // a /4 of IPv4
+		expect(checkBanTarget("64:ff9b::a00:1", [])).toMatchObject({ ok: false, reason: "m7s" }); // 10.0.0.1
+		expect(checkBanTarget("2002:c0a8:101::/48", [])).toMatchObject({ ok: false, reason: "m7s" }); // 192.168.1.1
+		expect(checkBanTarget("64:ff9b::/100", [])).toMatchObject({ ok: false, reason: "m7r" }); // a /4 of IPv4
 		expect(checkBanTarget("2002:cb00:7107::1", [])).toMatchObject({ ok: true }); // 203.0.113.7
 	});
 
 	it("refuses the deprecated IPv4-compatible block", () => {
-		expect(checkBanTarget("::cb00:7107", [])).toMatchObject({ ok: false, reason: "reservedAddress" });
+		expect(checkBanTarget("::cb00:7107", [])).toMatchObject({ ok: false, reason: "m7s" });
 	});
 });
 

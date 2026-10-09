@@ -13,11 +13,7 @@ export const RANGE_ACTION = "cs:range";
 export const PAGE_REFRESH = "cs:page:refresh";
 export const SETUP_ACTION = "cs:setup";
 
-/** Alerts page: the view travels after a `|` in the id (see `./alerts.ts`). */
-export const ALERTS_VIEW = "cs:alerts:view";
-export const ALERTS_TABLE = "cs:alerts:table";
-export const ALERTS_SCENARIO = "cs:alerts:scenario";
-export const ALERTS_DELETE = "cs:alerts:delete";
+/** The Alerts explorer's ids are `cs:x:<role>|<view>`: see `./explorer.ts`. */
 
 export const DECISIONS_TABLE = "cs:decisions:table";
 export const DECISIONS_REFRESH = "cs:decisions:refresh";

@@ -11,6 +11,7 @@
 import type { PluginContext } from "emdash/plugin";
 
 import type { AlertRow, DayRow, TrafficDay } from "./rows.js";
+import type { LogRow } from "./log.js";
 
 export interface Page<T> {
 	items: Array<{ id: string; data: T }>;
@@ -85,6 +86,11 @@ export function alertsStore(ctx: PluginContext): Typed<AlertRow> | null {
 
 export function daysStore(ctx: PluginContext): Typed<DayRow> | null {
 	return wrap<DayRow>(ctx.storage?.days);
+}
+
+/** The alert log the explorer reads (see `./log.ts`). */
+export function logStore(ctx: PluginContext): Typed<LogRow> | null {
+	return wrap<LogRow>(ctx.storage?.log);
 }
 
 export function trafficStore(ctx: PluginContext): Typed<TrafficDay> | null {

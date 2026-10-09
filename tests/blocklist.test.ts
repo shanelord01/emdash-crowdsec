@@ -89,55 +89,6 @@ describe("counts", () => {
 	});
 });
 
-describe("the purge of rows stored before blocklists were left out", () => {
-	it("deletes them, takes them back out of their day and hour, and keeps the site's own rows", async () => {
-		host = await newHost("lapi");
-		const now = Date.now();
-		const startedAt = new Date(now - 3 * 3_600_000).toISOString();
-		const { localDay, hourKey } = await import("../src/sync/time.js");
-		const day = localDay(startedAt, ZONE);
-		const hour = hourKey(Date.parse(startedAt));
-		const base = { startedAt, createdAt: startedAt, day, kind: "behaviour", country: "", asName: "", path: "", host: "", events: 1, simulated: false, decisionType: "ban" };
-		// A blocklist alert stored before `origin` was kept, an empty-source alert of the site's own, and an ordinary one.
-		await host.fixtures.plugin.storage("alerts", "900", { ...base, id: 900, scenario: "update : +24004/-0 IPs", ip: "", scope: "crowdsecurity/community-blocklist", decisions: 24004, bans: 24004 });
-		await host.fixtures.plugin.storage("alerts", "901", { ...base, id: 901, scenario: "crowdsecurity/own", ip: "", scope: "", decisions: 1, bans: 1 });
-		await host.fixtures.plugin.storage("alerts", "902", { ...base, id: 902, scenario: "crowdsecurity/http-probing", ip: "203.0.113.9", scope: "Ip", decisions: 1, bans: 1 });
-		await host.fixtures.plugin.storage("days", day, {
-			date: day, alerts: 3, waf: 0, bot: 0, behaviour: 3, manual: 0, decisions: 24006, bans: 24006,
-			scenarios: { "update : +24004/-0 IPs": 1, "crowdsecurity/own": 1, "crowdsecurity/http-probing": 1 },
-			countries: {}, asNames: {}, paths: {}, ips: { "203.0.113.9": 1 }, seen: [[900, 902]], updatedAt: "",
-		});
-		await setState(host, {
-			dataset: DATASET,
-			head: new Date(now).toISOString(),
-			gaps: [],
-			lastSync: "x",
-			hours: { [hour]: { alerts: 3, waf: 0, bot: 0, behaviour: 3, manual: 0, scenarios: { "update : +24004/-0 IPs": 1, "crowdsecurity/own": 1 } } },
-			active: { bans: 23897, decisions: 23904, at: new Date(now).toISOString(), truncated: false },
-		});
-
-		const calls = await bridgeCalls(tick(host));
-
-		expect(calls.length, calls.join(", ")).toBeLessThanOrEqual(10);
-		const ids = (await host.inspect.storage.list<AlertRow>("alerts")).map((a) => a.data.id).sort();
-		expect(ids).toEqual([901, 902]);
-		const stored = await host.inspect.storage.get<DayRow>("days", day);
-		expect(stored).toMatchObject({ alerts: 2, behaviour: 2, decisions: 2, bans: 2, seen: [[900, 902]] });
-		expect(stored?.scenarios["update : +24004/-0 IPs"]).toBeUndefined();
-		const state = await host.inspect.kv.get<SyncState>("sync.state");
-		expect(state?.blocklistPurged).toBe(true);
-		expect(state?.active).toBeUndefined();
-		expect(state?.hours?.[hour]?.alerts).toBe(2);
-		expect((await host.inspect.scheduledTasks()).map((t) => String(t.name))).toContain("bans");
-	});
-
-	it("is not needed on a new install, which never stored any", async () => {
-		host = await newHost("demo");
-		await tick(host)();
-		expect((await host.inspect.kv.get<SyncState>("sync.state"))?.blocklistPurged).toBe(true);
-	});
-});
-
 describe("the blocklist count", () => {
 	it("is counted daily in a task of its own and kept as one number", async () => {
 		host = await newHost("lapi");

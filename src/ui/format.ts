@@ -37,10 +37,10 @@ export function formatRemaining(seconds: number, lang: Lang): string {
 	const days = Math.floor(whole / 86_400);
 	const hours = Math.floor((whole % 86_400) / 3600);
 	const minutes = Math.floor((whole % 3600) / 60);
-	if (days > 0) return t(lang, "remainingDays", { days, hours });
-	if (hours > 0) return t(lang, "remainingHours", { hours, minutes });
-	if (minutes > 0) return t(lang, "remainingMinutes", { minutes });
-	return t(lang, "remainingSeconds", { seconds: whole });
+	if (days > 0) return t(lang, "m4o", { days, hours });
+	if (hours > 0) return t(lang, "m4p", { hours, minutes });
+	if (minutes > 0) return t(lang, "m4q", { minutes });
+	return t(lang, "m4r", { seconds: whole });
 }
 
 export type Trend = "up" | "down" | "neutral";
@@ -56,16 +56,16 @@ export function trendOf(current: number, previous: number | null): Trend | null 
 /** The comparison under a stat. Growth from zero has no percentage. */
 export function comparisonText(current: number, previous: number | null, locale?: string): string {
 	const lang = langOf(locale);
-	if (previous === null) return t(lang, "noEarlierPeriod");
-	if (previous === 0 && current === 0) return t(lang, "noneEitherPeriod");
-	if (previous === 0) return t(lang, "upFromNone");
+	if (previous === null) return t(lang, "m17");
+	if (previous === 0 && current === 0) return t(lang, "m18");
+	if (previous === 0) return t(lang, "m19");
 	const ratio = (current - previous) / previous;
 	const change = new Intl.NumberFormat(lang, {
 		style: "percent",
 		signDisplay: "exceptZero",
 		maximumFractionDigits: Math.abs(ratio) < 0.01 ? 1 : 0,
 	}).format(ratio);
-	return t(lang, "vsPrevious", { change });
+	return t(lang, "m1a", { change });
 }
 
 /**
@@ -99,6 +99,25 @@ export function formatTime(iso: string, locale: string | undefined, zone: string
 		}).format(ms);
 	} catch {
 		return iso;
+	}
+}
+
+/**
+ * A time for a table cell, short enough not to wrap: "9 Oct 11:54", with
+ * the year only when it is not the current one ("9 Oct 2025 11:54"). In
+ * the configured zone, 24-hour.
+ */
+export function formatCompact(at: number | string, locale: string | undefined, zone: string, now: Date): string {
+	const ms = typeof at === "number" ? at : Date.parse(at);
+	if (Number.isNaN(ms)) return String(at);
+	try {
+		const lang = langOf(locale) === "en" ? "en-AU" : langOf(locale);
+		const year = (v: number) => new Intl.DateTimeFormat("en", { year: "numeric", timeZone: zone }).format(v);
+		const date = new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", ...(year(ms) !== year(now.getTime()) && { year: "numeric" }), timeZone: zone }).format(ms);
+		const time = new Intl.DateTimeFormat(lang, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: zone }).format(ms);
+		return `${date} ${time}`;
+	} catch {
+		return new Date(ms).toISOString().slice(0, 16).replace("T", " ");
 	}
 }
 
@@ -160,4 +179,19 @@ export function countryName(locale: string | undefined): (code: string) => strin
 			return code;
 		}
 	};
+}
+
+/** Generated machine ids run to 48 characters: past this, a name shows its first 8 and an ellipsis. */
+const LONG_ID = 20;
+
+/**
+ * An engine as people read it: its name from the Engine names setting, or
+ * its machine id, cut to the first 8 characters when it is a long
+ * generated one. The detail view shows the whole id.
+ */
+export function engineLabel(id: string, names: Record<string, string> | undefined, lang: Lang): string {
+	if (!id) return t(lang, "unknown");
+	const named = names?.[id];
+	if (named) return named;
+	return id.length > LONG_ID ? `${id.slice(0, 8)}…` : id;
 }

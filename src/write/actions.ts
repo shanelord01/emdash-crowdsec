@@ -30,8 +30,9 @@ import type { RawDecision } from "../lapi/types.js";
 import { checkBanTarget, displayNetwork, isSingleAddress, parseNetwork, sameNetwork } from "../net/ip.js";
 import { callerAddresses, DNS_KEY, dnsFresh, isLocalName, namesToResolve, protections, resolveNames, type DnsCache } from "../net/protect.js";
 import type { CrowdSecSettings } from "../settings.js";
-import { alertsStore } from "../store/access.js";
-import { parseGoDuration, rfc3339 } from "../sync/time.js";
+import { BIND_LIMIT, logStore } from "../store/access.js";
+import type { LogRow } from "../store/log.js";
+import { localDay, parseGoDuration, rfc3339 } from "../sync/time.js";
 
 export const ADMIN_ROLE = 50;
 
@@ -44,6 +45,8 @@ export type BanType = (typeof BAN_TYPES)[number];
 export const MAX_NOTE = 120;
 /** How long after its decisions end an alert may be deleted. */
 export const DELETE_GRACE_S = 120;
+/** Pages of a day's alert log a delete reads: 300 rows, more than a busy day holds. */
+export const LOG_QUERIES = 3;
 
 export interface Caller {
 	user?: { id?: string; name?: string | null; role?: number } | null;
@@ -65,16 +68,15 @@ function refuse(key: Parameters<typeof failure>[0], params?: Record<string, stri
  * (a token with no bound user has no role to read).
  */
 export function writeGate(settings: CrowdSecSettings, caller: Caller, requireRole = true): WriteResult<null> {
-	if (!settings.allowChanges) return refuse("changesOff");
-	if (settings.source !== "lapi") return refuse("demoNoChanges");
-	if (requireRole && (caller.user?.role ?? 0) < ADMIN_ROLE) return refuse("adminOnly");
+	if (!settings.allowChanges) return refuse("m7l");
+	if (requireRole && (caller.user?.role ?? 0) < ADMIN_ROLE) return refuse("m7m");
 	// An entry the plugin cannot read protects nothing, and the operator
 	// believes it does: no change at all until it is fixed.
-	if (settings.protectedInvalid.length > 0) return refuse("protectedInvalidRefuse", { entries: settings.protectedInvalid.join(", ") });
+	if (settings.protectedInvalid.length > 0) return refuse("m7w", { entries: settings.protectedInvalid.join(", ") });
 	return { ok: true, value: null };
 }
 
-/** Is a write control worth showing? The same test as `writeGate`, without the reason. */
+/** Is a write control worth showing? */
 export function canWrite(settings: CrowdSecSettings, caller: Caller): boolean {
 	return writeGate(settings, caller).ok;
 }
@@ -89,11 +91,11 @@ export interface BanInput {
 /** The ban form's or the tool's input, checked by hand: the routes are reachable without the MCP server's validation. */
 export function parseBanInput(input: Record<string, unknown>): WriteResult<BanInput> {
 	const value = typeof input.value === "string" ? input.value.trim() : "";
-	if (!value) return refuse("invalidAddress");
+	if (!value) return refuse("m7n");
 	const duration = typeof input.duration === "string" && input.duration in BAN_DURATIONS ? (input.duration as BanDuration) : null;
-	if (!duration) return refuse("invalidDuration");
+	if (!duration) return refuse("m7o");
 	const type = input.type === undefined || input.type === "" ? "ban" : input.type;
-	if (type !== "ban" && type !== "captcha") return refuse("invalidType");
+	if (type !== "ban" && type !== "captcha") return refuse("m7p");
 	const note = typeof input.note === "string" ? input.note.replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, MAX_NOTE) : "";
 	return { ok: true, value: { value, duration, type, note } };
 }
@@ -128,14 +130,14 @@ export async function checkBan(
 	// A local site name cannot be looked up, so a ban could cover the site
 	// without anyone knowing. Bans stay refused until the site URL is public.
 	const local = names.find(isLocalName);
-	if (local) return refuse("localSiteName", { name: local });
+	if (local) return refuse("m6h", { name: local });
 	if (names.length > 0 && !dnsFresh(dns, names, now)) {
-		if (!ctx.http) return refuse("noNetwork");
+		if (!ctx.http) return refuse("m6z");
 		const http = ctx.http;
 		const looked = await resolveNames((url, init) => http.fetch(url, init), names, now);
 		if (!looked.ok) return { ok: false, problem: looked.problem };
 		await ctx.kv.set(DNS_KEY, looked.value);
-		return refuse("dnsJustLoaded");
+		return refuse("m7k");
 	}
 
 	const callers = callerAddresses(caller);
@@ -144,11 +146,11 @@ export async function checkBan(
 		protections({ callers, siteUrl: ctx.site.url, lapiUrl: settings.lapiUrl, dns, setting: settings.protectedAddresses }),
 	);
 	if (!check.ok) {
-		if (check.reason === "rangeTooWide") return refuse("rangeTooWide", { widest: check.widest });
-		if (check.reason === "hostBits") return refuse("hostBits", { meant: check.meant });
+		if (check.reason === "m7r") return refuse("m7r", { widest: check.widest });
+		if (check.reason === "m7v") return refuse("m7v", { meant: check.meant });
 		if (check.reason === "protectedAddress") {
-			const own = caller.channel === "mcp" ? "mcpClientAddress" : "ownAddress";
-			const key = ({ caller: own, site: "siteAddress", lapi: "lapiAddress", setting: "settingAddress" } as const)[check.rule];
+			const own = caller.channel === "mcp" ? "m7u" : "m7t";
+			const key = ({ caller: own, site: "m7x", lapi: "m7y", setting: "m7z" } as const)[check.rule];
 			return refuse(key, { match: check.match });
 		}
 		return refuse(check.reason);
@@ -237,17 +239,17 @@ export async function addBan(
 export async function checkAllowlist(lapi: LapiClient, value: string): Promise<WriteResult<null>> {
 	const allow = await lapi.allowlisted(value);
 	if (!allow.ok) return { ok: false, problem: allow.problem };
-	if (allow.value.allowlisted) return refuse(allow.value.reason ? "allowlistedReason" : "allowlisted", { reason: allow.value.reason ?? "" });
+	if (allow.value.allowlisted) return refuse(allow.value.reason ? "m80" : "allowlisted", { reason: allow.value.reason ?? "" });
 	return { ok: true, value: null };
 }
 
 /** Remove one decision by id. Calls: the login and the DELETE. */
 export async function removeDecision(lapi: LapiClient, id: unknown): Promise<WriteResult<{ id: number; removed: number }>> {
 	const n = positiveId(id);
-	if (n === null) return refuse("invalidId");
+	if (n === null) return refuse("m7q");
 	const res = await lapi.deleteDecision(n);
 	if (!res.ok) return { ok: false, problem: res.problem };
-	if (res.value === 0) return refuse("decisionGone");
+	if (res.value === 0) return refuse("m85");
 	return { ok: true, value: { id: n, removed: res.value } };
 }
 
@@ -269,7 +271,7 @@ export async function removeBansOn(
 	callsAvailable: number,
 ): Promise<WriteResult<{ value: string; removed: number; remaining: number; ids: number[] }>> {
 	const parsed = parseNetwork(raw);
-	if (!parsed) return refuse("invalidAddress");
+	if (!parsed) return refuse("m7n");
 	// LAPI stores an IPv4 address in IPv4 form, so `::ffff:a.b.c.d` is searched as `a.b.c.d`.
 	const value = displayNetwork(parsed);
 	const network = parseNetwork(value)!;
@@ -289,7 +291,7 @@ export async function removeBansOn(
 			else ids.add(decision.id);
 		}
 	}
-	if (ids.size === 0) return refuse(blocklisted ? "onlyBlocklisted" : "noActiveBan", { value });
+	if (ids.size === 0) return refuse(blocklisted ? "m4l" : "m86", { value });
 
 	const removed: number[] = [];
 	for (const id of ids) {
@@ -309,37 +311,70 @@ function activeDecision(decision: RawDecision): boolean {
 
 /**
  * Delete one alert by id, never in bulk, and only once its decisions ended
- * more than `DELETE_GRACE_S` ago. Calls: the login, the GET, the DELETE
- * and the stored row's delete, all inside `callsAvailable`. When too few
- * are left after the GET, it asks to be tried again rather than stop
- * between the two deletes.
+ * more than `DELETE_GRACE_S` ago. Calls: the login, the GET, the DELETE,
+ * then the alert log's rows for the alert's local day (a query and a
+ * write), all inside `callsAvailable`. When too few are left after the
+ * GET, it asks to be tried again rather than stop between the deletes.
+ * `dayHint` is the local day the caller saw the alert on, used when LAPI
+ * no longer has it.
  */
-export async function deleteAlert(ctx: PluginContext, lapi: LapiClient, id: unknown, callsAvailable = 8): Promise<WriteResult<{ id: number }>> {
+export async function deleteAlert(
+	ctx: PluginContext,
+	lapi: LapiClient,
+	id: unknown,
+	zone: string,
+	callsAvailable = 8,
+	dayHint?: string,
+): Promise<WriteResult<{ id: number }>> {
 	const n = positiveId(id);
-	if (n === null) return refuse("invalidId");
+	if (n === null) return refuse("m7q");
 	const start = lapi.calls;
 	const found = await lapi.alert(n);
 	if (!found.ok) return { ok: false, problem: found.problem };
 	if (!found.value) {
-		// LAPI no longer has it, so the stored row goes too.
-		await alertsStore(ctx)?.deleteMany([String(n)]);
-		return refuse("alertGone", { id: n });
+		// LAPI no longer has it, so the stored copy goes too.
+		if (dayHint && lapi.calls - start + LOG_QUERIES + 1 <= callsAvailable) await removeFromLog(ctx, n, dayHint);
+		return refuse("m89", { id: n });
 	}
 
 	for (const decision of found.value.decisions ?? []) {
 		const left = parseGoDuration(decision.duration);
 		// Fail closed: a decision whose end cannot be read may still be in force.
-		if (left === null) return refuse("alertDecisionUnknown", { id: n });
-		if (left > 0) return refuse("alertHasActiveDecision", { id: n });
-		if (left > -DELETE_GRACE_S) return refuse("alertDecisionJustEnded", { id: n });
+		if (left === null) return refuse("m8d", { id: n });
+		if (left > 0) return refuse("m8a", { id: n });
+		if (left > -DELETE_GRACE_S) return refuse("m8b", { id: n });
 	}
 
-	// The DELETE at its worst and the stored row's delete must both fit.
-	if (lapi.calls - start + REQUEST_WORST + 1 > callsAvailable) return refuse("tryAgain");
+	// The DELETE at its worst and the log's queries and write must all fit.
+	if (lapi.calls - start + REQUEST_WORST + LOG_QUERIES + 1 > callsAvailable) return refuse("m8e");
 	const res = await lapi.deleteAlert(n);
 	if (!res.ok) return { ok: false, problem: res.problem };
-	await alertsStore(ctx)?.deleteMany([String(n)]);
+	const startedAt = found.value.start_at ?? found.value.created_at;
+	const day = startedAt && !Number.isNaN(Date.parse(startedAt)) ? localDay(startedAt, zone) : dayHint;
+	if (day) await removeFromLog(ctx, n, day);
 	return { ok: true, value: { id: n } };
+}
+
+/**
+ * Take one alert out of the log's rows for a day, reading up to `queries`
+ * pages of them. Calls: the queries, and the write when a row held it.
+ */
+export async function removeFromLog(ctx: PluginContext, id: number, day: string, queries = LOG_QUERIES): Promise<boolean> {
+	const log = logStore(ctx);
+	if (!log) return false;
+	const changed: Array<{ id: string; data: LogRow }> = [];
+	let cursor: string | undefined;
+	for (let i = 0; i < queries; i++) {
+		const page = await log.query({ where: { day }, limit: BIND_LIMIT, ...(cursor ? { cursor } : {}) });
+		for (const item of page.items) {
+			if (item.data.alerts.some((a) => a.i === id)) changed.push({ id: item.id, data: { ...item.data, alerts: item.data.alerts.filter((a) => a.i !== id) } });
+		}
+		if (!page.hasMore || !page.cursor) break;
+		cursor = page.cursor;
+	}
+	if (changed.length === 0) return false;
+	await log.putMany(changed);
+	return true;
 }
 
 function positiveId(value: unknown): number | null {

@@ -19,10 +19,7 @@ import { validZone } from "./sync/time.js";
 import { resolveTimeZone } from "./time/zone.js";
 import { clampNumber, str } from "./values.js";
 
-export type SourceId = "lapi" | "demo";
-
 export interface CrowdSecSettings {
-	source: SourceId;
 	/** The LAPI URL without a trailing slash or `/v1`. */
 	lapiUrl: string;
 	machineId: string;
@@ -42,6 +39,8 @@ export interface CrowdSecSettings {
 	firewallMetricsUrl: string;
 	/** Why a metrics URL that was entered cannot be used. */
 	metricsProblems: { engine?: Problem; firewall?: Problem };
+	/** Display names for CrowdSec agents, by `machine_id`. */
+	engineNames: Record<string, string>;
 }
 
 export const DEFAULT_SYNC_INTERVAL = "*/15 * * * *";
@@ -63,7 +62,6 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 	const enteredUrl = normalizeBaseUrl(str(raw.get("lapiUrl")));
 	const urlKey = enteredUrl ? lapiUrlProblem(enteredUrl) : null;
 	const settings: CrowdSecSettings = {
-		source: raw.get("source") === "demo" ? "demo" : "lapi",
 		// A URL that cannot be used is never handed on, so no request is ever made to it.
 		lapiUrl: urlKey ? "" : enteredUrl,
 		machineId: str(raw.get("machineId")),
@@ -78,6 +76,7 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 		engineMetricsUrl: "",
 		firewallMetricsUrl: "",
 		metricsProblems: {},
+		engineNames: parseEngineNames(raw.get("engineNames")),
 	};
 	// The metrics URLs follow the LAPI URL's rules. One that cannot be used
 	// turns its charts off and shows on the setup check: the alerts still sync.
@@ -88,7 +87,7 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 		const entered = str(raw.get(key));
 		if (!entered) continue;
 		const problem = lapiUrlProblem(entered);
-		if (problem) settings.metricsProblems[which] = { key: problem, ...(problem !== "urlUserinfo" && { params: { url: entered } }) };
+		if (problem) settings.metricsProblems[which] = { key: problem, ...(problem !== "m6i" && { params: { url: entered } }) };
 		else settings[field] = entered;
 	}
 	// An unknown zone is not quietly replaced for the sync: counting days in
@@ -96,12 +95,11 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 	// The pages use the default meanwhile.
 	const zoneText = typeof raw.get("timeZone") === "string" ? (raw.get("timeZone") as string).trim() : "";
 	const zoneProblem: Problem | null =
-		zoneText && resolveTimeZone(zoneText, "") === "" ? { key: "timeZoneInvalid", params: { zone: zoneText.slice(0, 64) } } : null;
-	if (settings.source === "demo") return zoneProblem ? { ok: false, missing: [], problem: zoneProblem, partial: settings } : { ok: true, settings };
+		zoneText && resolveTimeZone(zoneText, "") === "" ? { key: "m6g", params: { zone: zoneText.slice(0, 64) } } : null;
 
 	if (urlKey) {
 		// A URL with a user name or password in it is never repeated back.
-		const params = urlKey === "urlUserinfo" ? undefined : { url: enteredUrl };
+		const params = urlKey === "m6i" ? undefined : { url: enteredUrl };
 		return { ok: false, missing: [], problem: { key: urlKey, ...(params && { params }) }, partial: settings };
 	}
 	const missing: string[] = [];
@@ -109,10 +107,28 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 	if (!settings.machineId) missing.push("machineId");
 	if (!settings.password) missing.push("machinePassword");
 	if (missing.length > 0) {
-		return { ok: false, missing, problem: { key: "notConfigured", params: { missing: missing.join(",") } }, partial: settings };
+		return { ok: false, missing, problem: { key: "m6y", params: { missing: missing.join(",") } }, partial: settings };
 	}
 	if (zoneProblem) return { ok: false, missing: [], problem: zoneProblem, partial: settings };
 	return { ok: true, settings };
+}
+
+/**
+ * The Engine names setting: `machine_id = Display name` entries, one per
+ * line or separated by commas. An entry without `=`, or with either side
+ * empty, is left out. A name is cut to 40 characters.
+ */
+export function parseEngineNames(raw: unknown): Record<string, string> {
+	const out: Record<string, string> = {};
+	if (typeof raw !== "string") return out;
+	for (const entry of raw.split(/[\n,]/)) {
+		const cut = entry.indexOf("=");
+		if (cut < 0) continue;
+		const id = entry.slice(0, cut).trim().slice(0, 200);
+		const name = entry.slice(cut + 1).trim().slice(0, 40);
+		if (id && name && Object.keys(out).length < 100) out[id] = name;
+	}
+	return out;
 }
 
 /**
@@ -126,16 +142,16 @@ export function lapiUrlProblem(raw: string): MessageKey | null {
 	try {
 		url = new URL(raw);
 	} catch {
-		return "urlInvalid";
+		return "m6d";
 	}
-	if (url.username || url.password) return "urlUserinfo";
-	if (url.protocol !== "https:") return url.protocol === "http:" ? "urlNotHttps" : "urlInvalid";
-	if (url.search || url.hash) return "urlInvalid";
+	if (url.username || url.password) return "m6i";
+	if (url.protocol !== "https:") return url.protocol === "http:" ? "m6f" : "m6d";
+	if (url.search || url.hash) return "m6d";
 	const host = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
 	const literal = parseNetwork(host);
-	if (literal && RESERVED.some((reserved) => overlaps(literal, reserved))) return "urlPrivate";
+	if (literal && RESERVED.some((reserved) => overlaps(literal, reserved))) return "m6e";
 	if (!literal && (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal") || !host.includes("."))) {
-		return "urlPrivate";
+		return "m6e";
 	}
 	return null;
 }
@@ -151,6 +167,6 @@ export function settingsOf(result: SettingsResult): CrowdSecSettings {
  * these settings' rows, so a change here clears the store and starts again.
  */
 export function datasetOf(settings: CrowdSecSettings): string {
-	const base = settings.source === "demo" ? "demo" : `lapi|${settings.lapiUrl}`;
+	const base = `lapi|${settings.lapiUrl}`;
 	return `${base}|${settings.includeSimulated}|${settings.timeZone}`;
 }

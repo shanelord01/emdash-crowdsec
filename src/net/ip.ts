@@ -173,6 +173,16 @@ function unmapped(net: Network): Network {
 	return within(net, MAPPED) ? { family: 4, base: net.base & 0xffffffffn, prefix: net.prefix - 96 } : net;
 }
 
+/**
+ * True when `inner` lies inside `outer`, reading an IPv4-mapped form
+ * (`::ffff:a.b.c.d`) on either side as its IPv4 address. NAT64, SIIT and
+ * 6to4 forms are other addresses on the wire, so they do not match an IPv4
+ * filter.
+ */
+export function contains(outer: Network, inner: Network): boolean {
+	return within(unmapped(inner), unmapped(outer));
+}
+
 /** The canonical text LAPI is sent: dotted IPv4, RFC 5952 IPv6, `/n` only for a range. */
 export function formatNetwork(net: Network): string {
 	const address = net.family === 4 ? formatV4(net.base) : formatV6(net.base);
@@ -238,10 +248,10 @@ export interface ProtectedEntry {
 }
 
 export type TargetRefusal =
-	| { reason: "invalidAddress" }
-	| { reason: "hostBits"; meant: string }
-	| { reason: "rangeTooWide"; widest: string }
-	| { reason: "reservedAddress" }
+	| { reason: "m7n" }
+	| { reason: "m7v"; meant: string }
+	| { reason: "m7r"; widest: string }
+	| { reason: "m7s" }
 	| { reason: "protectedAddress"; rule: ProtectRule; match: string };
 
 export type TargetCheck =
@@ -258,18 +268,18 @@ export function checkBanTarget(input: unknown, protectedList: ProtectedEntry[]):
 	const network = parseNetwork(input);
 	if (!network) {
 		const meant = hostBitsOf(input);
-		return meant ? { ok: false, reason: "hostBits", meant } : { ok: false, reason: "invalidAddress" };
+		return meant ? { ok: false, reason: "m7v", meant } : { ok: false, reason: "m7n" };
 	}
 	const target = unmapped(network);
 	for (const form of forms(target)) {
-		if (form.prefix < WIDEST_PREFIX[form.family]) return { ok: false, reason: "rangeTooWide", widest: `/${WIDEST_PREFIX[form.family]}` };
+		if (form.prefix < WIDEST_PREFIX[form.family]) return { ok: false, reason: "m7r", widest: `/${WIDEST_PREFIX[form.family]}` };
 	}
 	// A range that covers a whole translation block, or reaches past one,
 	// would ban IPv4 space no IPv4 rule saw.
 	if (TRANSLATION_BLOCKS.some((block) => sameFamilyOverlap(target, block) && !within(target, block))) {
-		return { ok: false, reason: "reservedAddress" };
+		return { ok: false, reason: "m7s" };
 	}
-	if (RESERVED.some((reserved) => overlaps(target, reserved))) return { ok: false, reason: "reservedAddress" };
+	if (RESERVED.some((reserved) => overlaps(target, reserved))) return { ok: false, reason: "m7s" };
 	const hit = protectedList.find((entry) => overlaps(target, entry.network));
 	if (hit) return { ok: false, reason: "protectedAddress", rule: hit.rule, match: formatNetwork(unmapped(hit.network)) };
 	return { ok: true, network: target, value: formatNetwork(target), scope: isSingleAddress(target) ? "Ip" : "Range" };

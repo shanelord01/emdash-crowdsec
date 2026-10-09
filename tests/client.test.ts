@@ -93,10 +93,10 @@ describe("the client", () => {
 
 	it("names each failure in a sentence", async () => {
 		const cases: Array<[() => Response | Promise<Response>, string]> = [
-			[() => json({ message: "incorrect Username or Password" }, 401), "loginRefused"],
-			[() => new Response("<html>403</html>", { status: 403 }), "routeRefused"],
-			[() => new Response("<html>sign in</html>", { status: 200 }), "notJson"],
-			[() => Promise.reject(new Error("Plugin HTTP response body exceeds the 8388608 byte limit")), "tooLarge"],
+			[() => json({ message: "incorrect Username or Password" }, 401), "m71"],
+			[() => new Response("<html>403</html>", { status: 403 }), "m73"],
+			[() => new Response("<html>sign in</html>", { status: 200 }), "m76"],
+			[() => Promise.reject(new Error("Plugin HTTP response body exceeds the 8388608 byte limit")), "m7c"],
 			[() => Promise.reject(new Error("connect ECONNREFUSED")), "unreachable"],
 		];
 		for (const [handler, key] of cases) {
@@ -104,7 +104,7 @@ describe("the client", () => {
 			expect(res.ok ? null : res.problem.key, key).toBe(key);
 		}
 		const refused = await client(fakeLapi([login, () => json({ message: "expired" }, 401)])).alerts({ limit: 1 });
-		expect(refused.ok ? null : refused.problem.key).toBe("tokenRefused");
+		expect(refused.ok ? null : refused.problem.key).toBe("m72");
 	});
 });
 
@@ -127,7 +127,7 @@ describe("the allowlist check", () => {
 	it("fails closed on any other shape", async () => {
 		for (const body of [{}, { allowlisted: false }, { results: [{ target: "x" }] }, { results: [{ allowlists: [1] }] }, null]) {
 			const res = await client(fakeLapi([login, () => json(body)])).allowlisted("203.0.113.7");
-			expect(res.ok ? null : res.problem.key, JSON.stringify(body)).toBe("allowlistUnreadable");
+			expect(res.ok ? null : res.problem.key, JSON.stringify(body)).toBe("m7d");
 		}
 	});
 });

@@ -21,9 +21,6 @@ import { langOf, problemText, t, type Lang } from "./i18n.js";
 import { readSettings, settingsOf, type CrowdSecSettings, type SettingsResult } from "./settings.js";
 import { buildSource } from "./sources.js";
 import { callerAddresses } from "./net/protect.js";
-import { isBlocklistDecision } from "./lapi/blocklist.js";
-import { sameNetwork } from "./net/ip.js";
-import { parseGoDuration } from "./sync/time.js";
 import {
 	ACTIVE_BATCH,
 	BANS_TASK,
@@ -40,16 +37,18 @@ import {
 	REFRESH_TASK,
 	requestTask,
 	runBlocklistCount,
-	runReconcile,
+	runMaintenance,
 	runSync,
 	SYNC_TASK,
 	type Loaded,
+	VISIT_PREFIX,
 } from "./sync/scheduler.js";
 import { addDays, localDay } from "./sync/time.js";
 import { mcpTools } from "./tools/declare.js";
 import {
 	activeDecisions,
 	addressAlerts,
+	alertsExplorer,
 	banAddressTool,
 	deleteAlertTool,
 	removeBanTool,
@@ -58,7 +57,9 @@ import {
 	topThreats,
 	trafficSummary,
 } from "./tools/load.js";
-import { loadAlerts, parseAlertsInput, renderAlerts, scenariosOf, type AlertsView } from "./ui/alerts.js";
+import { loadExplorer, parseExplorerInput, renderExplorer, X_BAN_CONFIRM, X_BAN_REVIEW, X_DELETE, X_UNBAN } from "./ui/explorer.js";
+import { rangeOf } from "./explorer/model.js";
+import type { RawAlert } from "./lapi/types.js";
 import { decisionRows, parseDecisionsView, protectedView, readActive, renderDecisions, type DecisionsView } from "./ui/decisions.js";
 import {
 	ALERTS_PATH,
@@ -75,7 +76,9 @@ import { DEFAULT_RANGE, loadDays, loadTraffic, parseRange, readSince, renderSecu
 import { renderSetup, runSetup } from "./ui/setup.js";
 import { renderWidget } from "./ui/widget.js";
 import { asRecord } from "./values.js";
-import { addBan, canWrite, checkAllowlist, checkBan, deleteAlert, parseBanInput, removeDecision, writeGate, type BanCheck, type BanInput, type Caller } from "./write/actions.js";
+import { isBlocklistAlert } from "./lapi/blocklist.js";
+import { runWrite, type Toast, type WriteAsk, type WriteOutcome } from "./write/run.js";
+import { canWrite, type Caller } from "./write/actions.js";
 
 /** The cron hook's timeout. A step with a login and a 3 MB answer can pass the default 5 s on a cold isolate. */
 const CRON_TIMEOUT_MS = 30_000;
@@ -86,7 +89,6 @@ const BUDGET = 10;
 /** The worst case of the Decisions page's live read: the login and three searches. */
 const LIVE_READ = 4;
 
-type Toast = { message: string; type: "success" | "error" };
 
 interface AdminRouteContext {
 	input: unknown;
@@ -131,8 +133,7 @@ const plugin: SandboxedPlugin = {
 					return;
 				}
 				if (event.name === RECONCILE_TASK) {
-					const settings = settingsOf(await readSettings(ctx));
-					await runReconcile(ctx, settings);
+					await runMaintenance(ctx);
 				}
 			},
 		},
@@ -164,6 +165,10 @@ const plugin: SandboxedPlugin = {
 		[TOOL_ROUTES.traffic]: {
 			permission: "plugins:read",
 			handler: async (routeCtx, ctx) => await trafficSummary(ctx, routeCtx.input, new Date()),
+		},
+		[TOOL_ROUTES.explorer]: {
+			permission: "plugins:read",
+			handler: async (routeCtx, ctx) => await alertsExplorer(ctx, routeCtx.input, new Date()),
 		},
 
 		// Writes: administrators only, enforced by the host.
@@ -218,20 +223,20 @@ async function handleAdmin(routeCtx: AdminRouteContext, ctx: PluginContext) {
 	const actionId = typeof input.action_id === "string" ? input.action_id : "";
 
 	if (page === SECURITY_PATH) return await securityPage(ctx, input, actionId, loaded, result, now, lang);
-	if (page === ALERTS_PATH) return await alertsPage(ctx, input, loaded, result, caller, now, lang);
+	if (page === ALERTS_PATH) return await explorerPage(ctx, input, loaded, result, caller, now, lang);
 	if (page === DECISIONS_PATH) return await decisionsPage(ctx, input, actionId, loaded, result, caller, now, lang);
 
 	// The widget.
 	const widgetOf = async () => {
 		const traffic = metricsOn(settings) ? await loadTraffic(ctx, addDays(localDay(now, settings.timeZone), -13)) : undefined;
+		const metrics = loaded.metrics;
 		return renderWidget({
 			state: loaded.state,
-			source: settings.source,
 			zone: settings.timeZone,
 			now,
 			lang,
 			...(traffic && { traffic }),
-			...(loaded.metrics && { sampledSince: loaded.metrics.since }),
+			...(metrics && { sampledSince: metrics.since }),
 		});
 	};
 	if (input.type === "block_action" && actionId === WIDGET_REFRESH) {
@@ -242,7 +247,7 @@ async function handleAdmin(routeCtx: AdminRouteContext, ctx: PluginContext) {
 	await scheduleFromSettings(ctx, settings);
 	await noteWaiting(ctx, loaded, now);
 	// The blocklist is counted daily. Before its first count, ask for one now.
-	if (result.ok && settings.source === "lapi" && !loaded.blocklist) await requestTask(ctx, BLOCKLIST_NOW_TASK, now);
+	if (result.ok && !loaded.blocklist) await requestTask(ctx, BLOCKLIST_NOW_TASK, now);
 	return { blocks: await widgetOf() };
 }
 
@@ -250,9 +255,9 @@ async function handleAdmin(routeCtx: AdminRouteContext, ctx: PluginContext) {
 async function requestRefresh(ctx: PluginContext, result: SettingsResult, now: Date, lang: Lang): Promise<Toast> {
 	// An incomplete configuration is answered at once: the step could only record the same problem.
 	if (!result.ok) return { message: problemText(lang, result.problem), type: "error" };
-	if (!(await requestTask(ctx, REFRESH_TASK, now))) return { message: t(lang, "syncUnschedulable"), type: "error" };
+	if (!(await requestTask(ctx, REFRESH_TASK, now))) return { message: t(lang, "m1c"), type: "error" };
 	await requestTask(ctx, BANS_TASK, new Date(now.getTime() + 30_000));
-	return { message: t(lang, "syncRequested"), type: "success" };
+	return { message: t(lang, "m1b"), type: "success" };
 }
 
 /** Calls: kv.list, settings.list, two day queries; Refresh adds two schedules; the setup check is its own budget. */
@@ -281,12 +286,12 @@ async function securityPage(
 	const traffic = on && range !== 1 ? await loadTraffic(ctx, since) : [];
 	const blocks = renderSecurity({
 		state: loaded.state,
-		source: settings.source,
 		zone: settings.timeZone,
 		range,
 		days,
 		traffic,
 		metrics: loaded.metrics,
+		engineNames: settings.engineNames,
 		metricsOn: on,
 		now,
 		lang,
@@ -294,12 +299,20 @@ async function securityPage(
 	return toast ? { blocks, toast } : { blocks };
 }
 
+/** A visit this long after the last one starts a new one, for "Since last visit". */
+const VISIT_GAP_MS = 30 * 60_000;
+
 /**
- * Calls: kv.list, settings.list, then the 30 days' scenario list and one
- * page of alerts. A delete spends its share first (the login, the GET, the
- * DELETE and the stored row), and the page is read with what is left.
+ * The Alerts explorer. Calls: kv.list and settings.list, then:
+ *
+ * - the visit's write, on a page load more than 30 minutes after the last;
+ * - a write, when one was asked for: the explorer's ban, removal or delete,
+ *   with the same checks and calls as on the CrowdSec decisions page;
+ * - an alert's detail: the login and the GET;
+ * - otherwise the day rows before the period and up to four log queries,
+ *   with what is left.
  */
-async function alertsPage(
+async function explorerPage(
 	ctx: PluginContext,
 	input: Record<string, unknown>,
 	loaded: Loaded,
@@ -309,40 +322,72 @@ async function alertsPage(
 	lang: Lang,
 ) {
 	const settings = settingsOf(result);
-	const { view, deleteId } = parseAlertsInput(input);
-	let spent = 2;
+	const zone = settings.timeZone;
+	const parsed = parseExplorerInput(input);
+	let view = parsed.view;
+	const base = parsed.base;
+	let extra = 2;
 	let toast: Toast | undefined;
+	let review: WriteOutcome["review"];
 
-	if (deleteId !== undefined) {
-		const gate = writeGate(settings, caller);
-		if (!gate.ok) toast = { message: problemText(lang, gate.problem), type: "error" };
-		else if (!result.ok) toast = { message: problemText(lang, result.problem), type: "error" };
-		else {
-			const lapi = buildSource(ctx, settings, loaded.state.skewMs)?.lapi;
-			if (!lapi) toast = { message: t(lang, "noNetwork"), type: "error" };
-			else {
-				const res = await deleteAlert(ctx, lapi, deleteId, BUDGET - spent);
-				spent += lapi.calls + (res.ok ? 1 : 0);
-				toast = res.ok
-					? { message: problemText(lang, { key: "alertDeleted", params: { id: res.value.id } }), type: "success" }
-					: { message: problemText(lang, res.problem), type: "error" };
-			}
-		}
+	// "Since last visit": each viewer's visits, kept under the state's prefix.
+	const userId = caller.user?.id;
+	const visit = userId ? loaded.visits[userId] : undefined;
+	const fresh = !visit || now.getTime() - Date.parse(visit.last) > VISIT_GAP_MS;
+	const lastVisit = visit ? (fresh ? visit.last : (visit.previous ?? null)) : null;
+	if (userId && fresh && input.type !== "block_action") {
+		await ctx.kv.set(`${VISIT_PREFIX}${userId}`, { last: now.toISOString(), ...(visit && { previous: visit.last }) });
+		extra++;
 	}
 
-	const left = BUDGET - spent;
-	const scenarios = left >= 2 ? scenariosOf(await loadDays(ctx, addDays(localDay(now, settings.timeZone), -29))) : [];
-	const listed = left >= 1 ? await loadAlerts(ctx, view as AlertsView) : { rows: [] };
-	const blocks = renderAlerts({
+	const source = result.ok ? buildSource(ctx, settings, loaded.state.skewMs) : null;
+	const spent = () => extra + (source?.calls() ?? 0);
+	const target = view.d ?? "";
+	const ask: WriteAsk | null =
+		base === X_BAN_REVIEW
+			? { kind: "review", values: { ...asRecord(input.values), value: target } }
+			: base === X_BAN_CONFIRM
+				? { kind: "ban", values: asRecord(input.value) }
+				: base === X_UNBAN
+					? { kind: "unban", value: target }
+					: base === X_DELETE
+						? { kind: "delete", id: view.al }
+						: null;
+	if (ask) {
+		const res = await runWrite(ctx, ask, settings, result, loaded, caller, source, () => BUDGET - spent(), now, lang);
+		({ toast, review } = res);
+		extra += res.extra;
+		// After a change, the address's alerts.
+		view = { ...view, n: 0 };
+		delete view.al;
+	}
+
+	const range = rangeOf(view, now, zone, settings.retentionDays, lastVisit);
+	let detail: { alert: RawAlert | null; error?: string } | undefined;
+	if (view.al) {
+		if (!result.ok) detail = { alert: null, error: problemText(lang, result.problem) };
+		else if (!source?.lapi) detail = { alert: null, error: t(lang, "m6z") };
+		else {
+			const res = await source.lapi.alert(view.al);
+			// A community blocklist alert is not this site's, and carries thousands of decisions: it is never listed.
+			if (!res.ok) detail = { alert: null, error: problemText(lang, res.problem) };
+			else detail = res.value && !isBlocklistAlert(res.value) ? { alert: res.value } : { alert: null, error: t(lang, "m43", { id: view.al }) };
+		}
+	}
+	const data = view.al ? { period: [], seenBefore: new Set<string>(), partial: false, skipped: false } : await loadExplorer(ctx, range, zone, BUDGET - spent());
+	const blocks = renderExplorer({
 		view,
-		...listed,
-		scenarios,
-		state: loaded.state,
-		source: settings.source,
-		zone: settings.timeZone,
-		canDelete: canWrite(settings, caller),
+		range,
+		data,
+		retentionDays: settings.retentionDays,
+		hasVisit: lastVisit !== null,
+		zone,
 		now,
 		lang,
+		writes: canWrite(settings, caller),
+		engineNames: settings.engineNames,
+		...(review && { review }),
+		...(detail && { detail }),
 	});
 	return toast ? { blocks, toast } : { blocks };
 }
@@ -370,75 +415,24 @@ async function decisionsPage(
 	const writer = canWrite(settings, caller);
 	const source = result.ok ? buildSource(ctx, settings, loaded.state.skewMs) : null;
 	let toast: Toast | undefined;
-	let review: { check: BanCheck; input: BanInput } | undefined;
+	let review: WriteOutcome["review"];
 	let wrote = false;
 	// Calls the source does not count: a DNS lookup and a schedule.
 	let extra = 0;
 	const spentOn = () => 2 + (source?.calls() ?? 0) + extra;
 
-	const isWrite = base === BAN_REVIEW || base === BAN_CONFIRM || base === DECISIONS_REMOVE;
-	if (isWrite) {
-		const gate = writeGate(settings, caller);
-		if (!gate.ok) toast = { message: problemText(lang, gate.problem), type: "error" };
-		else if (!result.ok) toast = { message: problemText(lang, result.problem), type: "error" };
-		else if (!source?.lapi) toast = { message: t(lang, "noNetwork"), type: "error" };
-		else if (base === BAN_REVIEW || base === BAN_CONFIRM) {
-			const values = base === BAN_REVIEW ? asRecord(input.values) : asRecord(input.value);
-			const parsed = parseBanInput(values);
-			if (!parsed.ok) toast = { message: problemText(lang, parsed.problem), type: "error" };
-			else if (base === BAN_REVIEW) {
-				const dnsBefore = loaded.dns;
-				const checked = await checkBan(ctx, settings, dnsBefore, caller, parsed.value.value, now);
-				if (!checked.ok) {
-					// A cold DNS cache was just filled: two requests per name and the write.
-					if (checked.problem.key === "dnsJustLoaded") extra += 5;
-					toast = { message: problemText(lang, checked.problem), type: "error" };
-				} else {
-					// The review runs every rule the ban will, the allowlist included.
-					const allow = await checkAllowlist(source.lapi, checked.value.value);
-					if (!allow.ok) toast = { message: problemText(lang, allow.problem), type: "error" };
-					else {
-						// And says when the community blocklist already blocks the address.
-						// Informational: a failed lookup leaves the note out.
-						const look = await source.lapi.alerts({
-							scope: checked.value.scope,
-							value: checked.value.value,
-							activeOnly: true,
-							limit: 20,
-							simulated: true,
-							blocklists: "include",
-						});
-						const blocklisted =
-							look.ok &&
-							look.value.some((alert) =>
-								(alert.decisions ?? []).some((d) => isBlocklistDecision(d) && sameNetwork(d.value, checked.value.value) && (parseGoDuration(d.duration) ?? 0) > 0),
-							);
-						review = { check: checked.value, input: parsed.value, ...(blocklisted && { blocklisted }) };
-					}
-				}
-			} else {
-				const res = await addBan(ctx, source.lapi, settings, loaded.dns, caller, parsed.value, now);
-				if (!res.ok) {
-					if (res.problem.key === "dnsJustLoaded") extra += 5;
-					toast = { message: problemText(lang, res.problem), type: "error" };
-				} else {
-					wrote = true;
-					toast = {
-						message: problemText(lang, {
-							key: res.value.ownChecked ? "banDone" : "banDoneUnchecked",
-							params: { type: res.value.type, value: res.value.value, duration: res.value.duration },
-						}),
-						type: "success",
-					};
-				}
-			}
-		} else {
-			const res = await removeDecision(source.lapi, input.value);
-			if (res.ok) wrote = true;
-			toast = res.ok
-				? { message: problemText(lang, { key: "decisionRemoved", params: { id: res.value.id } }), type: "success" }
-				: { message: problemText(lang, res.problem), type: "error" };
-		}
+	const ask: WriteAsk | null =
+		base === BAN_REVIEW
+			? { kind: "review", values: asRecord(input.values) }
+			: base === BAN_CONFIRM
+				? { kind: "ban", values: asRecord(input.value) }
+				: base === DECISIONS_REMOVE
+					? { kind: "decision", id: input.value }
+					: null;
+	if (ask) {
+		const res = await runWrite(ctx, ask, settings, result, loaded, caller, source, () => BUDGET - spentOn(), now, lang);
+		({ toast, review, wrote } = res);
+		extra += res.extra;
 	}
 
 	// A fresh ban count for the widget, when a call is left for it.
@@ -450,7 +444,7 @@ async function decisionsPage(
 	let read = 0;
 	let error: string | undefined;
 	if (!result.ok) error = problemText(lang, result.problem);
-	else if (!source) error = t(lang, "noNetwork");
+	else if (!source) error = t(lang, "m6z");
 	else if (spent + LIVE_READ <= BUDGET) {
 		const res = await readActive(source, settings, loaded.state.activeBatch ?? ACTIVE_BATCH);
 		if (res.ok) {
