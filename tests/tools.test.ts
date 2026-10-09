@@ -48,7 +48,7 @@ describe("the manifest's MCP tools", () => {
 		const manifest = host.manifest as unknown as { routes?: Array<string | { name: string; permission?: string; public?: boolean }> };
 		const routes = new Map((manifest.routes ?? []).map((r) => (typeof r === "string" ? [r, { name: r }] : [r.name, r])));
 		const tools = toolsOf(host);
-		expect(tools.map((t) => t.name).sort()).toEqual(["active_decisions", "ban_ip", "delete_alert", "ip_alerts", "remove_ban", "security_summary", "top_threats"]);
+		expect(tools.map((t) => t.name).sort()).toEqual(["active_decisions", "ban_ip", "delete_alert", "ip_alerts", "remove_ban", "security_summary", "top_threats", "traffic_summary"]);
 		for (const tool of tools) {
 			const route = routes.get(tool.route) as { permission?: string; public?: boolean } | undefined;
 			expect(route, tool.name).toBeDefined();
@@ -78,7 +78,7 @@ describe("answers match their declared schemas", () => {
 	it("active_decisions and ip_alerts, live, with ip_alerts keeping exact source matches only", async () => {
 		host = await newHost("lapi");
 		await respondLogin(host, 200, 2);
-		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`, json(sampleAlerts()));
+		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`, json(sampleAlerts()));
 		const decisions = await call(host, TOOL_ROUTES.decisions, { limit: 2 });
 		expect(decisions).toMatchObject({ total: 5, truncated: true });
 		expect(decisions.decisions).toHaveLength(2);

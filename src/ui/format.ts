@@ -113,6 +113,37 @@ export function formatShortDay(day: string, locale?: string): string {
 	}
 }
 
+/** Bytes as "1.7 MB", "820 kB": decimal units, as network counters are read. */
+export function formatBytes(bytes: number, locale?: string): string {
+	const units = ["B", "kB", "MB", "GB", "TB"];
+	let value = Math.max(0, bytes);
+	let unit = 0;
+	while (value >= 1000 && unit < units.length - 1) {
+		value /= 1000;
+		unit++;
+	}
+	const digits = unit === 0 || value >= 100 ? 0 : 1;
+	return `${new Intl.NumberFormat(langOf(locale) === "en" ? "en-AU" : langOf(locale), { maximumFractionDigits: digits }).format(value)} ${units[unit]}`;
+}
+
+/** A count in short form: "26.5k", "1.2M". */
+export function formatShort(value: number, locale?: string): string {
+	try {
+		return new Intl.NumberFormat(langOf(locale) === "en" ? "en-AU" : langOf(locale), { notation: "compact", maximumFractionDigits: 1 }).format(value);
+	} catch {
+		return String(Math.round(value));
+	}
+}
+
+/** The local hour an instant starts, as a chart label: "14:00". */
+export function formatHour(ms: number, zone: string): string {
+	try {
+		return `${new Intl.DateTimeFormat("en-AU", { hour: "2-digit", hourCycle: "h23", timeZone: zone }).format(ms)}:00`;
+	} catch {
+		return new Date(ms).toISOString().slice(11, 13) + ":00";
+	}
+}
+
 /** ISO-2 country codes as names in the reader's language, the code where that fails. */
 export function countryName(locale: string | undefined): (code: string) => string {
 	let names: Intl.DisplayNames | null = null;

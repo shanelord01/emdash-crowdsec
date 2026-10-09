@@ -71,7 +71,7 @@ export function fakeCtx(opts: { settings: Record<string, unknown>; fetch?: Fetch
 				return Object.entries(opts.settings).map(([key, value]) => ({ key, value }));
 			},
 		},
-		storage: { alerts: collection("alerts"), days: collection("days") },
+		storage: { alerts: collection("alerts"), days: collection("days"), traffic: collection("traffic") },
 		cron: {
 			async schedule(name: string, o: { schedule: string }) {
 				scheduled.push({ name, schedule: o.schedule });

@@ -62,4 +62,13 @@ export interface AlertQuery {
 	value?: string;
 	simulated?: boolean;
 	activeOnly?: boolean;
+	/**
+	 * Community blocklist (CAPI) and list alerts. Left out unless asked for:
+	 * they are not this site's own events, and one of them carries thousands
+	 * of decisions. A lookup of one address includes them, so it can say the
+	 * address is on the blocklist.
+	 */
+	blocklists?: "exclude" | "include";
+	/** Only alerts with a decision of this origin. Implies `blocklists: "include"`. */
+	origin?: "CAPI" | "lists";
 }

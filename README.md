@@ -42,7 +42,7 @@ The plugin uses exactly these routes and no others.
 | Route | Used for | Needed |
 | --- | --- | --- |
 | `POST /v1/watchers/login` | The login, once per invocation that needs LAPI | Always |
-| `GET /v1/alerts` | The sync, the Decisions page, the tools | Always |
+| `GET /v1/alerts` | The sync, the CrowdSec decisions page, the tools | Always |
 | `GET /v1/alerts/{id}` | Checking an alert before deleting it | Always |
 | `POST /v1/alerts` | Adding a ban or captcha | With Allow changes on |
 | `DELETE /v1/alerts/{id}` | Deleting one alert | With Allow changes on |
@@ -82,6 +82,26 @@ location /crowdsec-lapi/ {
 }
 ```
 
+With the traffic charts on (see [Traffic charts](#traffic-charts)), also publish the security engine's and the firewall bouncer's Prometheus metrics, GET only and for the same address, inside the same challenge-exempt path:
+
+```nginx
+location = /crowdsec-lapi/metrics/engine {
+    allow 198.51.100.10;
+    deny  all;
+    limit_except GET { deny all; }
+    proxy_pass http://127.0.0.1:6060/metrics;
+}
+
+location = /crowdsec-lapi/metrics/firewall {
+    allow 198.51.100.10;
+    deny  all;
+    limit_except GET { deny all; }
+    proxy_pass http://127.0.0.1:60601/metrics;
+}
+```
+
+The firewall bouncer serves metrics only with `prometheus: enabled: true` (and its `listen_addr` and `listen_port`) in its configuration.
+
 `$uri` holds the path without the query string, so `DELETE /crowdsec-lapi/v1/decisions?ip=...` matches no line and gets a 403.
 
 If an AppSec bot challenge, a captcha or a sign-in page guards that hostname, exempt the `/crowdsec-lapi/` path from it. The plugin cannot answer a challenge, and a challenge page reaches it as HTML where it expects JSON.
@@ -103,28 +123,46 @@ Open Plugins, then the plugin's settings.
 - **Keep alerts for.** 90 days unless changed, 7 to 400. The first syncs read this far back, newest first, and older rows are deleted every night. LAPI keeps its own alerts by its own rules.
 - **Include simulated alerts.** Off unless changed. Alerts from scenarios in simulation mode, which decide nothing.
 - **Time zone.** An IANA name, `Australia/Sydney` unless changed. Days, charts, ranges, retention and times are in this zone, since EmDash does not tell a plugin the site's own. An unknown name pauses the sync until it is fixed, and the pages use `Australia/Sydney` meanwhile.
+- **Engine metrics URL** and **Firewall metrics URL.** Optional, empty unless set. The security engine's and the firewall bouncer's Prometheus endpoints, for the [traffic charts](#traffic-charts). They follow the LAPI URL's rules: HTTPS only, no user name or password in them, no redirects followed. A URL that cannot be used turns its charts off and shows on the setup check. The alerts still sync.
 - **Allow changes.** Off unless changed. See [Changes](#changes).
 - **Protected addresses.** Addresses and ranges a ban must never cover, separated by commas or new lines.
 
 Changing the LAPI URL, the time zone or Include simulated alerts to another usable value clears the stored alerts and reads them again, since the stored rows would no longer match. A value the plugin cannot use (a plain HTTP or private URL, an unknown time zone, a cleared password) pauses the sync instead and keeps every stored row, so a typo never costs history that LAPI may already have removed.
 
-Then open Plugins, Security, and select Check setup. It checks the settings, the URL, a fresh login, the User-Agent, read access, the ban protections when changes are on, the scheduled sync and the last sync, and says in one sentence what to fix for anything that fails.
+Then open Plugins, CrowdSec, and select Check setup. It checks the settings, the URL, a fresh login, the User-Agent, read access, the ban protections when changes are on, the scheduled sync and the last sync, and says in one sentence what to fix for anything that fails.
 
 On Cloudflare Workers the sync needs the Cron Trigger from EmDash's deployment guide. The setup check shows the snippet when the scheduler is not running.
 
 ## What it shows
 
-**The Security card** on the dashboard: alerts in the last 24 hours against the 24 before, active bans now, alerts by kind (WAF, bot challenge, behaviour), the top three scenarios, when the last sync ran, and a Refresh button that asks for a sync.
+**The CrowdSec card** on the dashboard: alerts in the last 24 hours against the 24 before, active bans now, alerts by kind (WAF, bot challenge, behaviour), packets discarded this week against the week before when the traffic charts are on, the top three scenarios, when the last sync ran, and a Refresh button that asks for a sync.
 
-**Security** (`/security`), over 7, 30 or 90 days: alerts, bans issued and WAF blocks against the period before, active bans, alerts by kind per day, bans issued per day, and the top scenarios, source addresses, countries, AS organisations and targeted paths. Top lists add up each day's 25 most frequent values, so a value that never made a day's top 25 is undercounted.
+**CrowdSec** (`/security`), over the last 24 hours (by hour) or 7, 30 or 90 days (by day): alerts, bans issued and WAF blocks against the period before, active bans, the [traffic charts](#traffic-charts) when they are on, alerts by kind, bans issued, a chart of where attacks come from (the ten countries with most alerts, their names spelt out), and the top scenarios, source addresses, countries, AS organisations and targeted paths. Top lists add up each day's 25 most frequent values, so a value that never made a day's top 25 is undercounted. In the 24-hour view they cover today and yesterday. EmDash draws no chart legend, so a line under each chart names its series by colour.
 
-**Security alerts** (`/security/alerts`): the stored alerts, newest first, 25 to a page, with time, kind, scenario, address, country, AS organisation, targeted path and decision, filtered by kind and scenario.
+**CrowdSec alerts** (`/security/alerts`): the stored alerts, newest first, 25 to a page, with time, kind, scenario, address, country, AS organisation, targeted path and decision, filtered by kind and scenario.
 
-**Security decisions** (`/security/decisions`): the decisions LAPI enforces now, read live, with address, scenario, type, origin, time remaining, country and AS organisation, sortable by expiry. It reads 100 alerts with an active decision at a time and says when there may be more.
+**CrowdSec decisions** (`/security/decisions`): the decisions LAPI enforces now, read live, with address, scenario, type, origin, time remaining, country and AS organisation, sortable by expiry. It reads 100 alerts with an active decision at a time and says when there may be more.
+
+### The community blocklist
+
+CrowdSec's Central API pulls the community blocklist into LAPI, and any lists you subscribe to come in the same way. They arrive as alerts of their own, with an empty source and thousands of decisions each: on a busy engine, tens of thousands of addresses. They are not this site's events, so the plugin leaves them out of every chart, top list, count and table, and asks LAPI to leave them out of its answers (`include_capi=false`). The CrowdSec decisions page and `active_decisions` show them as one line instead, "Also enforcing 24,004 addresses from the CrowdSec community blocklist and lists", counted once a day by a task of its own. That read is several megabytes, so only the count and its time are kept, and an answer too large to read is kept as "too many to count". A lookup of one address (`ip_alerts`, the ban review, `remove_ban`) still says when the blocklist blocks it. `remove_ban` never removes a blocklist decision, since CrowdSec adds it back on its next pull: to let such an address through, add it to a CrowdSec allowlist.
 
 Alert kinds come from LAPI: `waf` for AppSec rules and virtual patches, `bot-detection` and the `appsec-bot-challenge-*` scenarios for the bot challenge, `manual` for bans added by hand, and everything else as behaviour.
 
 Editors and administrators see all of it. Authors and contributors do not.
+
+## Traffic charts
+
+Alerts say what CrowdSec noticed. The traffic charts show what it then did, from the numbers the security engine and the firewall bouncer keep themselves, read from their own Prometheus endpoints on your server. Nothing comes from CrowdSec's cloud or Console. They are off until a metrics URL is set, and demo data shows them with generated numbers.
+
+- **Malicious traffic discarded:** packets and bytes the firewall bouncer dropped over the range, against the period before, split by where the decision came from: the community blocklist (and any lists), your own detections, and manual bans. A stacked chart shows each day (or hour). From `fw_bouncer_dropped_packets` and `fw_bouncer_dropped_bytes`.
+- **Share of traffic discarded:** dropped packets as a share of the packets the bouncer checked (`fw_bouncer_processed_packets`).
+- **Web requests:** requests the AppSec engine inspected (`cs_appsec_reqs_total`) and blocked (`cs_appsec_block_total`) per day, and the bot challenge for the range: requested, submitted, accepted, rejected and exempt (`cs_appsec_challenge_*_total`).
+- **Active bans by source:** the decisions in force now by origin, and the community blocklist's top reasons (`http:scan`, `ssh:bruteforce`), from `cs_active_decisions`.
+
+The plugin samples both endpoints on the sync's schedule, in a task of its own, and stores what each counter counted since the last sample: per local day for the retention period, and per hour for the last 48 hours. The first sample only sets the baseline. A counter lower than before was reset (the bouncer restarted, or CrowdSec restarted or reloaded), and its new value is what it counted since. A source that does not answer counts nothing until it answers again. Changing a metrics URL or the time zone starts a new baseline.
+
+`traffic_summary` gives the same figures to an agent.
 
 ## MCP tools
 
@@ -136,9 +174,10 @@ Turn on Agent access for the plugin under Plugins to use them.
 | `top_threats` | The most frequent scenarios, source addresses, countries, AS organisations and paths | Editor |
 | `active_decisions` | The decisions in force now, read live | Editor |
 | `ip_alerts` | The alerts for one address or range, read live, matching the source exactly | Editor |
-| `ban_ip` | Adds a ban or captcha, with every check the Decisions page runs | Administrator |
+| `traffic_summary` | Packets and bytes discarded by origin, their share, AppSec requests and blocks, and the bot challenge, over 7, 30 or 90 days | Editor |
+| `ban_ip` | Adds a ban or captcha, with every check the CrowdSec decisions page runs | Administrator |
 | `remove_ban` | Removes the active decisions on exactly one address or range | Administrator |
-| `delete_alert` | Deletes one alert, with the same guard as the Alerts page | Administrator |
+| `delete_alert` | Deletes one alert, with the same guard as the CrowdSec alerts page | Administrator |
 
 The write tools need Allow changes on as well.
 
@@ -146,9 +185,9 @@ The write tools need Allow changes on as well.
 
 With **Allow changes** on, administrators can:
 
-- ban an address or range, or make it solve a captcha, for 1 hour, 4 hours, 24 hours, 7 days or 30 days, from the Decisions page or `ban_ip`;
-- remove a decision from its row on the Decisions page, or every active decision on an address with `remove_ban`;
-- delete an old alert from its row on the Alerts page, or with `delete_alert`.
+- ban an address or range, or make it solve a captcha, for 1 hour, 4 hours, 24 hours, 7 days or 30 days, from the CrowdSec decisions page or `ban_ip`;
+- remove a decision from its row on the CrowdSec decisions page, or every active decision on an address with `remove_ban`;
+- delete an old alert from its row on the CrowdSec alerts page, or with `delete_alert`.
 
 Editors never see these controls, and the plugin refuses an editor's write even if one were sent. On the admin pages the plugin checks the administrator role itself, because EmDash sends every page interaction to one route that editors may read. The MCP write tools have routes of their own, which EmDash itself limits to administrators.
 
@@ -169,11 +208,11 @@ A ban is refused, with the rule that refused it named, when it covers:
 
 IPv6 forms that carry an IPv4 address are judged as that IPv4 address: IPv4-mapped (`::ffff:a.b.c.d`), SIIT translated (`::ffff:0:a.b.c.d`), NAT64 (`64:ff9b::/96`) and 6to4 (`2002::/16`). A range that would cover one of those blocks is refused, and so are the deprecated IPv4-compatible `::/96`, local-use NAT64 `64:ff9b:1::/48` and Teredo `2001::/32`, whose IPv4 addresses cannot be read reliably. A range with bits set after its prefix (`1.2.3.4/16`) is refused with the range it was probably meant as. Forwarding headers that carry a port (`203.0.113.5:4711`, `[2001:db8::1]:443`) are read without it.
 
-The Decisions page shows the protected set above the ban form.
+The CrowdSec decisions page shows the protected set above the ban form.
 
 ### Deleting alerts
 
-Deleting an alert in LAPI deletes its decisions with it, and a decision deleted that way is never reported to a bouncer that had not polled yet: the ban stays in the firewall until it expires. So the plugin deletes an alert only once all of its decisions ended more than two minutes ago, and refuses when a decision's end time cannot be read. To lift a ban, remove the decision instead. An alert LAPI no longer has is taken off the Alerts page.
+Deleting an alert in LAPI deletes its decisions with it, and a decision deleted that way is never reported to a bouncer that had not polled yet: the ban stays in the firewall until it expires. So the plugin deletes an alert only once all of its decisions ended more than two minutes ago, and refuses when a decision's end time cannot be read. To lift a ban, remove the decision instead. An alert LAPI no longer has is taken off the CrowdSec alerts page.
 
 ## How it reads LAPI
 
@@ -183,7 +222,8 @@ LAPI's alert search takes `since` and `until` as durations and `limit` as a coun
 - A **backfill** step reads the newest 30 days of the newest gap, at most 200 alerts, and shrinks the gap by what it read. The first syncs open one gap over the whole retention period, so the newest alerts arrive first.
 - While gaps remain, each backfill step schedules the next a minute later. A site with 230 alerts a day has 90 days of history in about two hours on Node. On Cloudflare Workers the pace is set by the site's Cron Trigger.
 - Syncs take turns: of every four, one reads forward, two read history (or forward, once there is none left) and one counts the active bans. At the default 15 minutes, a site with no history left to read reads forward three times an hour and counts the bans hourly. Refresh asks for a forward read and a ban count straight away, and every change asks for a ban count.
-- The Decisions page, `active_decisions` and `ip_alerts` read LAPI live each time. The other pages and tools read only the stored rows.
+- The CrowdSec decisions page, `active_decisions` and `ip_alerts` read LAPI live each time. The other pages and tools read only the stored rows.
+- The community blocklist is counted once a day, and once soon after the plugin is installed.
 - One sync runs at a time. A tick takes a lease on the sync state, and writes its result only if no other tick took the state meanwhile. A Refresh or a ban count that finds the lease taken runs a minute later.
 
 An answer over the 8 MiB a plugin may receive halves the batch for the next try, and steps that fit grow it back. When one second holds more alerts than a batch, the batch grows (to 500 at most) and, if that is too large, the read steps past that second. At an average of 13 KB per alert, 200 alerts are about 2.6 MB. Windows overlap at their edges, and every stored day records the alert ids it has counted, so no alert is counted twice. Durations are measured on LAPI's clock, from each answer's Date header.
@@ -200,12 +240,13 @@ A sandboxed invocation may make ten bridge calls on Cloudflare, and each storage
 | The daily DNS refresh for the ban protections | 10 |
 | The setup check with the DNS lookup | 10 |
 | The ban protections' first DNS lookup during a ban | 7 |
-| A ban from the Decisions page, with the list read again | 9 |
+| A ban from the CrowdSec decisions page, with the list read again | 9 |
 | A ban review, with the allowlist check and the list read again | 7 |
-| Deleting an alert from the Alerts page, with the page read again | 8 |
+| Deleting an alert from the CrowdSec alerts page, with the page read again | 8 |
 | `remove_ban` (it removes up to five decisions per call and says how many remain) | 9 |
-| The Security page over 90 days | 4 |
-| The dashboard card | 5 |
+| The CrowdSec page over 90 days, with the traffic charts | 6 |
+| The dashboard card | 9 |
+| A metrics sample: the state, the settings, both endpoints, the state's write and the day's row | 7 |
 
 `tests/budget.test.ts` counts the worst case of every hook, page action, write and tool.
 

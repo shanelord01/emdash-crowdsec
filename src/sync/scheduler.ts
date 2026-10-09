@@ -49,8 +49,12 @@
 import type { PluginContext } from "emdash/plugin";
 
 import { failure, type Problem } from "../i18n.js";
-import { compactAlert, countInto, emptyDay, trimDay, type AlertRow, type DayRow, type Kind } from "../store/rows.js";
-import { alertsStore, daysStore, ID_BATCH } from "../store/access.js";
+import { isBlocklistAlert, isBlocklistDecision } from "../lapi/blocklist.js";
+import { compactAlert, countInto, emptyDay, isBlocklistRow, trimDay, uncountFrom, type AlertRow, type DayRow, type Kind } from "../store/rows.js";
+import { alertsStore, daysStore, ID_BATCH, trafficStore } from "../store/access.js";
+import { fetchMetrics } from "../metrics/fetch.js";
+import { parsePrometheus, type Series } from "../metrics/prom.js";
+import { carried, deltaOf, demoMetricsText, isFirewallKey, sampleOf, sumCounters, type Gauges } from "../metrics/sample.js";
 import { DNS_KEY, dnsFresh, isLocalName, namesToResolve, resolveNames, type DnsCache } from "../net/protect.js";
 import { datasetOf, readSettings, type CrowdSecSettings } from "../settings.js";
 import { buildSource, type Source } from "../sources.js";
@@ -70,6 +74,20 @@ export const KV_PREFIX = "sync.";
 export const STATE_KEY = "sync.state";
 /** When the dashboard first found the sync scheduled and not yet run. */
 export const WAITING_KEY = "sync.waiting";
+/** The metrics sampler's state: the last raw sample, the hourly differences and the latest gauges. */
+export const METRICS_KEY = "sync.metrics";
+/** Samples the engine's and the bouncer's metrics, on the sync's schedule, in an invocation of its own. */
+export const METRICS_TASK = "metrics";
+/** Hours of metric differences kept for the 24-hour view and its comparison. */
+const METRIC_HOURS_KEPT = 48;
+/** The community blocklist count, written by its own daily task. */
+export const BLOCKLIST_KEY = "sync.blocklist";
+/** The daily count of the community blocklist, and the one-shot that asks for it out of turn. */
+export const BLOCKLIST_TASK = "blocklist";
+export const BLOCKLIST_NOW_TASK = "blocklist-now";
+export const BLOCKLIST_SCHEDULE = "40 4 * * *";
+/** Alerts one blocklist search reads. The community blocklist pulls in one alert per scenario, about 70. */
+export const BLOCKLIST_LIMIT = 1000;
 
 export const DEFAULT_BATCH = 200;
 export const MIN_BATCH = 20;
@@ -103,6 +121,8 @@ export interface Gap {
 
 export interface HourBucket {
 	alerts: number;
+	/** Bans issued with the hour's alerts. Absent from buckets kept before it was counted. */
+	bans?: number;
 	waf: number;
 	bot: number;
 	behaviour: number;
@@ -145,6 +165,17 @@ export interface SyncState {
 	burst?: string;
 	/** After a failed DNS lookup for the ban protections, when to try again. */
 	dnsRetryAt?: string;
+	/** True once rows stored before blocklist alerts were left out have been checked and purged. */
+	blocklistPurged?: boolean;
+	/** Where that purge continues. */
+	purgeCursor?: string;
+}
+
+/** How many addresses the community blocklist and lists hold, as last counted. */
+export interface BlocklistSnapshot {
+	at: string;
+	/** Distinct addresses and ranges with an active blocklist decision, or null when the answer was too large to count. */
+	addresses: number | null;
 }
 
 /** What a route reads in one call: the state, the DNS cache and the waiting mark share the `sync.` prefix. */
@@ -152,6 +183,26 @@ export interface Loaded {
 	state: SyncState;
 	dns: DnsCache | null;
 	waiting: string | null;
+	blocklist: BlocklistSnapshot | null;
+	metrics: MetricsState | null;
+}
+
+/** What the metrics sampler keeps between runs. */
+export interface MetricsState {
+	/** The URLs, the source and the zone the samples came from. Another set starts a new baseline. */
+	source: string;
+	/** The last raw counter values, the baseline for the next difference. */
+	last: Record<string, number>;
+	at: string;
+	/** Differences by UTC hour (`YYYY-MM-DDTHH`), the last 48 hours. */
+	hours: Record<string, Record<string, number>>;
+	/** The latest gauges from the engine: active decisions by origin and community reasons. */
+	gauges: Gauges | null;
+	/** Which sources answered last time, and why one did not. */
+	engine?: { ok: boolean; problem?: Problem; series?: number };
+	firewall?: { ok: boolean; problem?: Problem; series?: number };
+	/** When sampling started: no difference before this. */
+	since: string;
 }
 
 export async function loadKv(ctx: PluginContext): Promise<Loaded> {
@@ -161,15 +212,19 @@ export async function loadKv(ctx: PluginContext): Promise<Loaded> {
 		state: (values.get(STATE_KEY) as SyncState | undefined) ?? {},
 		dns: (values.get(DNS_KEY) as DnsCache | undefined) ?? null,
 		waiting: (values.get(WAITING_KEY) as string | undefined) ?? null,
+		blocklist: (values.get(BLOCKLIST_KEY) as BlocklistSnapshot | undefined) ?? null,
+		metrics: (values.get(METRICS_KEY) as MetricsState | undefined) ?? null,
 	};
 }
 
 /** Schedule the sync and the daily prune. `schedule` upserts on (plugin, task), so repeating it is harmless. */
-export async function ensureScheduled(ctx: PluginContext, interval: string): Promise<void> {
+export async function ensureScheduled(ctx: PluginContext, interval: string, metrics = false): Promise<void> {
 	if (!ctx.cron) return;
 	try {
 		await ctx.cron.schedule(SYNC_TASK, { schedule: interval });
 		await ctx.cron.schedule(RECONCILE_TASK, { schedule: RECONCILE_SCHEDULE });
+		await ctx.cron.schedule(BLOCKLIST_TASK, { schedule: BLOCKLIST_SCHEDULE });
+		if (metrics) await ctx.cron.schedule(METRICS_TASK, { schedule: interval });
 	} catch {
 		// An unscheduled sync shows on the setup check. A route must still render.
 	}
@@ -189,7 +244,7 @@ export async function noteWaiting(ctx: PluginContext, loaded: Loaded, now: Date)
 }
 
 export interface SyncOutcome {
-	step: "forward" | "backfill" | "bans" | "dns" | "wipe" | "idle" | "busy";
+	step: "forward" | "backfill" | "bans" | "dns" | "wipe" | "idle" | "busy" | "purge";
 	ok: boolean;
 	/** Alerts counted for the first time. */
 	counted: number;
@@ -242,12 +297,16 @@ export async function runSync(ctx: PluginContext, now: Date = new Date(), mode: 
 
 	state = { ...state, dataset, gaps: clipGaps(state, settings, now) };
 
+	// Rows stored before blocklist alerts were left out of the searches come
+	// out first, a batch per tick, so no chart or count shows them.
+	if (state.head && !state.blocklistPurged) return await runPurge(ctx, state, now);
+
 	if (mode === "bans") return await runBans(ctx, source, settings, state, now);
 
 	// The first step opens one gap over the whole retention window and
 	// reads its newest end.
 	if (!state.head) {
-		const first = { ...state, head: now.toISOString(), gaps: [{ from: floorOf(settings, now), to: now.toISOString() }] };
+		const first = { ...state, blocklistPurged: true, head: now.toISOString(), gaps: [{ from: floorOf(settings, now), to: now.toISOString() }] };
 		return await runBackfill(ctx, source, settings, first, now, mode, task);
 	}
 
@@ -356,6 +415,9 @@ async function step(
 		if (!row) continue;
 		if (!oldestCreated || row.createdAt < oldestCreated) oldestCreated = row.createdAt;
 		if (row.simulated && !settings.includeSimulated) continue;
+		// The searches leave blocklist alerts out. One that comes back anyway
+		// is still not counted: it is not this site's own event.
+		if (isBlocklistAlert(raw)) continue;
 		rows.push(row);
 	}
 
@@ -400,6 +462,7 @@ function addToHour(hours: Record<string, HourBucket>, row: AlertRow): void {
 	const key = hourKey(Date.parse(row.startedAt));
 	const bucket = hours[key] ?? { alerts: 0, waf: 0, bot: 0, behaviour: 0, manual: 0, scenarios: {} };
 	bucket.alerts++;
+	bucket.bans = (bucket.bans ?? 0) + row.bans;
 	bucket[row.kind]++;
 	if (row.scenario) bucket.scenarios[row.scenario] = (bucket.scenarios[row.scenario] ?? 0) + 1;
 	hours[key] = bucket;
@@ -537,7 +600,7 @@ async function runBans(ctx: PluginContext, source: Source, settings: CrowdSecSet
 }
 
 export function activeOf(
-	alerts: Array<{ decisions?: Array<{ type?: string; duration?: string; value?: string }> | null }>,
+	alerts: Array<{ decisions?: Array<{ type?: string; duration?: string; value?: string; origin?: string }> | null }>,
 	now: Date,
 	truncated: boolean,
 ): ActiveSnapshot {
@@ -545,6 +608,7 @@ export function activeOf(
 	let decisions = 0;
 	for (const alert of alerts) {
 		for (const decision of alert.decisions ?? []) {
+			if (isBlocklistDecision(decision)) continue;
 			const left = parseGoDuration(decision.duration);
 			if (left === null || left <= 0) continue;
 			decisions++;
@@ -586,6 +650,181 @@ async function busy(ctx: PluginContext, mode: SyncMode, now: Date): Promise<Sync
 }
 
 /**
+ * Take stored blocklist alerts out, once. Before the searches left them
+ * out, the sync could store community blocklist alerts: each one with an
+ * empty source and thousands of decisions, counted into its day as bans.
+ * They are found by their empty `ip`, an indexed field, deleted, and taken
+ * back out of their day rows and hourly buckets. Their ids stay counted, so
+ * no later read counts them again. The active ban count is cleared and read
+ * again, since it counted blocklist bans too.
+ *
+ * Calls: the lease and the settings (three), one query, days.getMany,
+ * alerts.deleteMany, days.putMany, the state write and, when done, the ban
+ * count's schedule: nine.
+ */
+async function runPurge(ctx: PluginContext, state: SyncState, now: Date): Promise<SyncOutcome> {
+	const alerts = alertsStore(ctx);
+	const days = daysStore(ctx);
+	if (!alerts || !days) return await fail(ctx, state, "purge", now, failure("storageUnavailable").problem);
+	const page = await alerts.query({ where: { ip: "" }, limit: ID_BATCH, ...(state.purgeCursor ? { cursor: state.purgeCursor } : {}) });
+	const found = page.items.filter((item) => isBlocklistRow(item.data));
+	let hours = { ...(state.hours ?? {}) };
+	if (found.length > 0) {
+		const ids = [...new Set(found.map((item) => item.data.day))];
+		const stored = await days.getMany(ids);
+		const touched = new Map<string, DayRow>();
+		for (const { data } of found) {
+			const day = touched.get(data.day) ?? (stored.has(data.day) ? structuredClone(stored.get(data.day)!) : null);
+			if (day && uncountFrom(day, data)) touched.set(data.day, day);
+			hours = withoutHour(hours, data);
+		}
+		await alerts.deleteMany(found.map((item) => item.id));
+		if (touched.size > 0) await days.putMany([...touched.values()].map((day) => ({ id: day.date, data: day })));
+	}
+	const more = page.hasMore && Boolean(page.cursor);
+	await writeState(ctx, {
+		...state,
+		hours,
+		purgeCursor: more ? page.cursor : undefined,
+		...(!more && { blocklistPurged: true, active: undefined }),
+	});
+	if (!more && ctx.cron) await ctx.cron.schedule(BANS_TASK, { schedule: now.toISOString() });
+	return { step: "purge", ok: true, counted: -found.length };
+}
+
+function withoutHour(hours: Record<string, HourBucket>, row: AlertRow): Record<string, HourBucket> {
+	const key = hourKey(Date.parse(row.startedAt));
+	const bucket = hours[key];
+	if (!bucket) return hours;
+	const scenarios = { ...bucket.scenarios };
+	if (row.scenario && scenarios[row.scenario] !== undefined) {
+		if (scenarios[row.scenario]! <= 1) delete scenarios[row.scenario];
+		else scenarios[row.scenario]!--;
+	}
+	return {
+		...hours,
+		[key]: {
+			...bucket,
+			alerts: Math.max(0, bucket.alerts - 1),
+			...(bucket.bans !== undefined && { bans: Math.max(0, bucket.bans - (row.bans ?? 0)) }),
+			[row.kind]: Math.max(0, bucket[row.kind] - 1),
+			scenarios,
+		},
+	};
+}
+
+/** Are the traffic charts on: a metrics URL set, or demo data? */
+export function metricsOn(settings: Pick<CrowdSecSettings, "source" | "engineMetricsUrl" | "firewallMetricsUrl">): boolean {
+	return settings.source === "demo" || Boolean(settings.engineMetricsUrl || settings.firewallMetricsUrl);
+}
+
+/**
+ * Sample the engine's and the bouncer's metrics and store what each counter
+ * counted since the last sample, by local day and by hour.
+ *
+ * The state is claimed with a conditional write before the day row is
+ * written: two runs that read the same baseline cannot both add the same
+ * difference, and a run that dies after the claim loses one interval
+ * rather than counting it twice.
+ *
+ * Calls: kv.getVersioned, settings.list, one request per source, the
+ * state's conditional write, traffic.getMany and traffic.putMany: seven.
+ */
+export async function runMetrics(ctx: PluginContext, now: Date = new Date()): Promise<{ ok: boolean; baseline?: boolean }> {
+	const versioned = await ctx.kv.getVersioned<MetricsState>(METRICS_KEY);
+	const prev = versioned?.value ?? null;
+	const result = await readSettings(ctx);
+	if (!result.ok || !metricsOn(result.settings)) return { ok: false };
+	const settings = result.settings;
+
+	const read = async (kind: "engine" | "firewall", url: string): Promise<{ series: Series[] | null; status?: MetricsState["engine"] }> => {
+		if (settings.source === "demo") return { series: parsePrometheus(demoMetricsText(kind, now)), status: { ok: true } };
+		if (!url || !ctx.http) return { series: null };
+		const http = ctx.http;
+		const res = await fetchMetrics((u, init) => http.fetch(u, init), url);
+		return res.ok ? { series: res.value, status: { ok: true, series: res.value.length } } : { series: null, status: { ok: false, problem: res.problem } };
+	};
+	const engine = await read("engine", settings.engineMetricsUrl);
+	const firewall = await read("firewall", settings.firewallMetricsUrl);
+	const sample = sampleOf(engine.series, firewall.series, now);
+
+	const source = [settings.source, settings.engineMetricsUrl, settings.firewallMetricsUrl, settings.timeZone].join("|");
+	const fresh = !prev || prev.source !== source;
+	const delta = fresh ? {} : deltaOf(prev.last, sample.counters, (key) => Boolean(isFirewallKey(key) ? prev.firewall?.ok : prev.engine?.ok));
+	const hourKeyNow = hourKey(now);
+	const hours: Record<string, Record<string, number>> = {};
+	for (const [key, counters] of Object.entries(fresh ? {} : prev.hours)) {
+		if (hourStart(key) >= now.getTime() - (METRIC_HOURS_KEPT + 1) * 3_600_000) hours[key] = counters;
+	}
+	if (Object.keys(delta).length > 0) hours[hourKeyNow] = sumCounters([hours[hourKeyNow] ?? {}, delta]);
+
+	const next: MetricsState = {
+		source,
+		last: fresh ? sample.counters : carried(prev.last, sample),
+		at: now.toISOString(),
+		hours,
+		gauges: sample.gauges ?? (fresh ? null : prev.gauges),
+		...(engine.status && { engine: engine.status }),
+		...(firewall.status && { firewall: firewall.status }),
+		// The first sample is the baseline: the differences start from it.
+		since: fresh ? now.toISOString() : prev.since,
+	};
+	const claim = await ctx.kv.compareAndSet(METRICS_KEY, versioned?.revision ?? null, next);
+	if (!claim.applied || fresh || Object.keys(delta).length === 0) return { ok: claim.applied, ...(fresh && { baseline: true }) };
+
+	const store = trafficStore(ctx);
+	if (!store) return { ok: false };
+	const date = localDay(now, settings.timeZone);
+	const existing = (await store.getMany([date])).get(date);
+	await store.putMany([
+		{
+			id: date,
+			data: {
+				date,
+				counters: sumCounters([existing?.counters ?? {}, delta]),
+				samples: (existing?.samples ?? 0) + 1,
+				updatedAt: now.toISOString(),
+			},
+		},
+	]);
+	return { ok: true };
+}
+
+/**
+ * Count the community blocklist and lists, once a day in a task of its own.
+ * The answer is several megabytes (about 3.5 MB for 24,000 addresses), so
+ * only the count is kept, with its time. An answer over the 8 MiB cap is
+ * kept as "too many to count" rather than a failure.
+ *
+ * Calls: settings.list, the login, a search for each origin, the write: five.
+ */
+export async function runBlocklistCount(ctx: PluginContext, now: Date = new Date()): Promise<BlocklistSnapshot | null> {
+	const result = await readSettings(ctx);
+	if (!result.ok || result.settings.source !== "lapi") return null;
+	const source = buildSource(ctx, result.settings, undefined, { now: () => now });
+	if (!source) return null;
+	const addresses = new Set<string>();
+	for (const origin of ["CAPI", "lists"] as const) {
+		const res = await source.alerts({ origin, activeOnly: true, limit: BLOCKLIST_LIMIT, simulated: false });
+		if (!res.ok) {
+			if (res.problem.key !== "tooLarge") return null;
+			const snapshot = { at: now.toISOString(), addresses: null };
+			await ctx.kv.set(BLOCKLIST_KEY, snapshot);
+			return snapshot;
+		}
+		for (const alert of res.value) {
+			for (const decision of alert.decisions ?? []) {
+				const left = parseGoDuration(decision.duration);
+				if (isBlocklistDecision(decision) && decision.value && left !== null && left > 0) addresses.add(decision.value);
+			}
+		}
+	}
+	const snapshot = { at: now.toISOString(), addresses: addresses.size };
+	await ctx.kv.set(BLOCKLIST_KEY, snapshot);
+	return snapshot;
+}
+
+/**
  * Clear the store after the dataset changed, in bounded batches: a query
  * and a delete per batch, six calls with the lease, the settings and the
  * state write around them. Until it is done, every tick resumes it.
@@ -593,7 +832,7 @@ async function busy(ctx: PluginContext, mode: SyncMode, now: Date): Promise<Sync
 async function runWipe(ctx: PluginContext, state: SyncState, now: Date): Promise<SyncOutcome> {
 	let calls = 6;
 	let finished = true;
-	for (const store of [alertsStore(ctx), daysStore(ctx)]) {
+	for (const store of [alertsStore(ctx), daysStore(ctx), trafficStore(ctx)]) {
 		if (!store) continue;
 		let more = true;
 		while (more && calls >= 2) {
@@ -629,9 +868,10 @@ export async function runReconcile(
 	let deleted = 0;
 	let more = false;
 	let batches = 4;
-	const passes: Array<[ReturnType<typeof alertsStore> | ReturnType<typeof daysStore>, Record<string, unknown>]> = [
+	const passes: Array<[ReturnType<typeof alertsStore> | ReturnType<typeof daysStore> | ReturnType<typeof trafficStore>, Record<string, unknown>]> = [
 		[alertsStore(ctx), { startedAt: { lt: cutoff.toISOString() } }],
 		[daysStore(ctx), { date: { lt: localDay(cutoff, settings.timeZone) } }],
+		[trafficStore(ctx), { date: { lt: localDay(cutoff, settings.timeZone) } }],
 	];
 	for (const [store, where] of passes) {
 		if (!store) continue;
@@ -686,11 +926,12 @@ export function coveredSince(state: SyncState): string | null {
 
 /** Sum the hourly buckets that start in [since, until). */
 export function sumHours(state: SyncState, since: number, until: number): HourBucket {
-	const out: HourBucket = { alerts: 0, waf: 0, bot: 0, behaviour: 0, manual: 0, scenarios: {} };
+	const out: HourBucket = { alerts: 0, bans: 0, waf: 0, bot: 0, behaviour: 0, manual: 0, scenarios: {} };
 	for (const [key, bucket] of Object.entries(state.hours ?? {})) {
 		const start = hourStart(key);
 		if (start < since || start >= until) continue;
 		out.alerts += bucket.alerts;
+		out.bans = (out.bans ?? 0) + (bucket.bans ?? 0);
 		for (const kind of ["waf", "bot", "behaviour", "manual"] as Kind[]) out[kind] += bucket[kind];
 		for (const [name, n] of Object.entries(bucket.scenarios)) out.scenarios[name] = (out.scenarios[name] ?? 0) + n;
 	}

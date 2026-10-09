@@ -41,6 +41,9 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 	});
 	const lastSync = z.string().nullable().describe("When the plugin last synced from CrowdSec, ISO 8601.");
 	const ranking = z.array(z.object({ value: z.string(), alerts: z.number() }));
+	const origins = z
+		.object({ community: z.number(), detections: z.number(), manual: z.number(), other: z.number() })
+		.describe("community: the CrowdSec community blocklist and lists. detections: the site's own scenarios and AppSec. manual: bans added by hand.");
 	const address = z.string().min(2).max(64).describe("An IPv4 or IPv6 address, or a CIDR range.");
 	const writeOutput = z.object({
 		done: z.boolean(),
@@ -102,7 +105,8 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 		},
 		active_decisions: {
 			description:
-				"The decisions CrowdSec enforces now (bans and captchas), read live from the Local API, soonest to expire first. " +
+				"The site's own decisions CrowdSec enforces now (bans and captchas), read live from the Local API, soonest to expire first. " +
+				"The community blocklist and lists are not listed: communityBlocklist gives their count from the plugin's daily count. " +
 				"Use the id with remove_ban's address, or to tell an administrator what is blocked.",
 			route: TOOL_ROUTES.decisions,
 			input: z.object({
@@ -110,8 +114,14 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 			}),
 			output: z.object({
 				readAt: z.string(),
-				total: z.number(),
+				total: z.number().describe("The site's own active decisions. Community blocklist and list decisions are not in this list."),
 				truncated: z.boolean(),
+				communityBlocklist: z
+					.object({
+						addresses: z.number().nullable().describe("Addresses the community blocklist and lists block, or null when there were too many to count."),
+						at: z.string().describe("When they were last counted, once a day."),
+					})
+					.nullable(),
 				decisions: z.array(
 					z.object({
 						id: z.number(),
@@ -131,12 +141,15 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 		ip_alerts: {
 			description:
 				"The alerts CrowdSec holds for one address or range, newest first, read live from the Local API, with each alert's decisions. " +
-				"Matches the alert's source exactly.",
+				"Matches the alert's source exactly. communityBlocklist lists any community blocklist or list decision on the address.",
 			route: TOOL_ROUTES.ipAlerts,
 			input: z.object({ address }),
 			output: z.object({
 				address: z.string(),
 				truncated: z.boolean(),
+				communityBlocklist: z
+					.array(z.object({ id: z.number(), origin: z.string(), scenario: z.string(), type: z.string(), remainingSeconds: z.number() }))
+					.describe("Active community blocklist (CAPI) or list decisions on exactly this address. Empty when it is on neither."),
 				alerts: z.array(
 					z.object({
 						id: z.number(),
@@ -149,6 +162,26 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 						decisions: z.array(z.object({ id: z.number(), type: z.string(), remainingSeconds: z.number() })),
 					}),
 				),
+			}),
+			destructive: false,
+		},
+		traffic_summary: {
+			description:
+				"Malicious traffic the firewall bouncer discarded on this site over the last 7, 30 or 90 days: packets and bytes by origin (the CrowdSec community blocklist, the site's own detections, manual bans), " +
+				"their share of the packets the bouncer checked, web requests the AppSec engine inspected and blocked, the bot challenge at each stage, and the active decisions by origin now. " +
+				"From the site's own CrowdSec metrics, sampled with each sync. enabled is false when no metrics URL is set. window.partial is true when sampling started inside the window.",
+			route: TOOL_ROUTES.traffic,
+			input: z.object({ days }),
+			output: z.object({
+				window,
+				enabled: z.boolean(),
+				sampledSince: z.string().nullable().describe("When metrics sampling started, ISO 8601."),
+				discarded: z.object({ packets: z.number(), bytes: z.number(), packetsByOrigin: origins, bytesByOrigin: origins }),
+				processedPackets: z.number().describe("Packets the firewall bouncer checked."),
+				share: z.number().nullable().describe("Discarded packets as a share of the packets checked, 0 to 1."),
+				appsec: z.object({ inspected: z.number(), blocked: z.number() }),
+				challenge: z.object({ requested: z.number(), submitted: z.number(), accepted: z.number(), rejected: z.number(), exempt: z.number() }),
+				activeByOrigin: origins.nullable().describe("Active decisions by origin now, from the security engine."),
 			}),
 			destructive: false,
 		},
@@ -169,7 +202,8 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 		},
 		remove_ban: {
 			description:
-				"Remove the active decisions on exactly one address or range. Needs Allow changes on. " +
+				"Remove the site's own active decisions on exactly one address or range. Needs Allow changes on. " +
+				"Community blocklist and list decisions are not removed, since CrowdSec adds them back: the answer says when only those block the address. " +
 				"Removes a few per call: when remaining is above zero, call again.",
 			route: TOOL_ROUTES.removeBan,
 			input: z.object({ address }),

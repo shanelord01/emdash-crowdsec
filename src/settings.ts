@@ -37,6 +37,11 @@ export interface CrowdSecSettings {
 	protectedInvalid: string[];
 	/** The IANA time zone every day is counted in. */
 	timeZone: string;
+	/** The security engine's and the firewall bouncer's Prometheus endpoints. Empty is off, and so is a URL that cannot be used. */
+	engineMetricsUrl: string;
+	firewallMetricsUrl: string;
+	/** Why a metrics URL that was entered cannot be used. */
+	metricsProblems: { engine?: Problem; firewall?: Problem };
 }
 
 export const DEFAULT_SYNC_INTERVAL = "*/15 * * * *";
@@ -70,7 +75,22 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 		protectedAddresses: networks,
 		protectedInvalid: invalid,
 		timeZone: validZone(raw.get("timeZone")),
+		engineMetricsUrl: "",
+		firewallMetricsUrl: "",
+		metricsProblems: {},
 	};
+	// The metrics URLs follow the LAPI URL's rules. One that cannot be used
+	// turns its charts off and shows on the setup check: the alerts still sync.
+	for (const [key, field, which] of [
+		["engineMetricsUrl", "engineMetricsUrl", "engine"],
+		["firewallMetricsUrl", "firewallMetricsUrl", "firewall"],
+	] as const) {
+		const entered = str(raw.get(key));
+		if (!entered) continue;
+		const problem = lapiUrlProblem(entered);
+		if (problem) settings.metricsProblems[which] = { key: problem, ...(problem !== "urlUserinfo" && { params: { url: entered } }) };
+		else settings[field] = entered;
+	}
 	// An unknown zone is not quietly replaced for the sync: counting days in
 	// another zone would read as a change of dataset and clear the store.
 	// The pages use the default meanwhile.

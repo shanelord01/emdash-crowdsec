@@ -20,8 +20,9 @@
 
 import { t, type Lang } from "../i18n.js";
 import type { RawAlert, Result } from "../lapi/types.js";
+import { isBlocklistDecision } from "../lapi/blocklist.js";
 import type { Source } from "../sources.js";
-import { MIN_BATCH } from "../sync/scheduler.js";
+import { MIN_BATCH, type BlocklistSnapshot } from "../sync/scheduler.js";
 import { displayNetwork, parseNetwork } from "../net/ip.js";
 import { hostOf, type DnsCache } from "../net/protect.js";
 import type { CrowdSecSettings } from "../settings.js";
@@ -44,7 +45,7 @@ import {
 	textInput,
 	type SecurityBlock,
 } from "./blocks.js";
-import { countryName, formatRemaining, formatTime } from "./format.js";
+import { countryName, formatAge, formatCount, formatRemaining, formatTime } from "./format.js";
 import { ALERTS_PATH, BAN_CONFIRM, BAN_REVIEW, DECISIONS_REFRESH, DECISIONS_REMOVE, DECISIONS_TABLE, SECURITY_PATH } from "./ids.js";
 
 export const DECISION_ROWS = 50;
@@ -93,12 +94,17 @@ export interface DecisionsView {
 
 export const DEFAULT_DECISIONS_VIEW: DecisionsView = { dir: "asc", offset: 0 };
 
-/** One row per unexpired decision, soonest to expire first unless asked otherwise. */
+/**
+ * One row per unexpired decision of the site's own, soonest to expire first
+ * unless asked otherwise. Community blocklist and list decisions are never
+ * rows: the page shows them as one count.
+ */
 export function decisionRows(alerts: RawAlert[], now: Date): DecisionRow[] {
 	const rows: DecisionRow[] = [];
 	const seen = new Set<number>();
 	for (const alert of alerts) {
 		for (const decision of alert.decisions ?? []) {
+			if (isBlocklistDecision(decision)) continue;
 			const left = parseGoDuration(decision.duration);
 			if (left === null || left <= 0 || typeof decision.id !== "number" || seen.has(decision.id)) continue;
 			seen.add(decision.id);
@@ -172,8 +178,10 @@ export interface DecisionsInput {
 	view: DecisionsView;
 	canWrite: boolean;
 	protectedSet?: ProtectedView;
-	/** A reviewed ban, waiting for its confirmation. */
-	review?: { check: BanCheck; input: BanInput };
+	/** A reviewed ban, waiting for its confirmation. `blocklisted` when the community blocklist already holds the address. */
+	review?: { check: BanCheck; input: BanInput; blocklisted?: boolean };
+	/** The community blocklist count from its daily task. */
+	blocklist?: BlocklistSnapshot | null;
 	zone: string;
 	now: Date;
 	lang: Lang;
@@ -193,6 +201,18 @@ export function renderDecisions(input: DecisionsInput): SecurityBlock[] {
 	];
 
 	if (input.review) out.push(...reviewBlocks(input.review, lang));
+
+	if (input.blocklist) {
+		const age = formatAge(input.blocklist.at, input.now, lang) ?? "";
+		out.push(
+			context(
+				input.blocklist.addresses === null
+					? t(lang, "blocklistTooMany", { age })
+					: t(lang, "blocklistCount", { count: input.blocklist.addresses, formatted: formatCount(input.blocklist.addresses, lang), age }),
+				{ blockId: "cs:decisions:blocklist" },
+			),
+		);
+	}
 
 	if (input.error) {
 		out.push(banner({ description: input.error, variant: "error" }));
@@ -241,7 +261,8 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 				country: country(row.country),
 				as: row.asName,
 				...(input.canWrite && {
-					remove: button(`${DECISIONS_REMOVE}|${view.dir}`, t(lang, "remove"), {
+					// Every button an action id of its own: the row's decision id rides in it too.
+					remove: button(`${DECISIONS_REMOVE}|${view.dir}|${row.id}`, t(lang, "remove"), {
 						style: "danger",
 						value: row.id,
 						confirm: confirmDialog(
@@ -301,14 +322,14 @@ function banBlocks(p: ProtectedView, lang: Lang): SecurityBlock[] {
 	];
 }
 
-function reviewBlocks(review: { check: BanCheck; input: BanInput }, lang: Lang): SecurityBlock[] {
+function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: boolean }, lang: Lang): SecurityBlock[] {
 	const { check, input } = review;
 	const what = t(lang, "reviewWhat", {
 		type: input.type === "captcha" ? t(lang, "typeCaptcha") : t(lang, "typeBan"),
 		value: check.value,
 		duration: t(lang, `duration_${input.duration}` as "duration_4h"),
 	});
-	const own = check.ownChecked ? t(lang, "ownChecked") : t(lang, "ownNotChecked");
+	const own = [check.ownChecked ? t(lang, "ownChecked") : t(lang, "ownNotChecked"), ...(review.blocklisted ? [t(lang, "alreadyBlocklisted")] : [])].join(" ");
 	return [
 		banner({ title: t(lang, "reviewTitle"), description: `${what} ${own}`, variant: check.ownChecked ? "default" : "alert" }),
 		section(t(lang, "reviewChecks"), {

@@ -42,6 +42,24 @@ plain `pnpm install` is enough.
 - **The lease guards the last write too.** A tick claims the state with a
   conditional write and writes its result against the revision it claimed.
   A tick that overran its lease has its write discarded.
+- **LAPI includes the community blocklist unless told not to.** Every
+  search sends `include_capi=false` except a lookup of one address
+  (`blocklists: "include"`) and the daily count (`origin=CAPI`/`lists`). On a
+  live site the blocklist was 71 alerts, 24,004 decisions and 3.5 MB.
+  `isBlocklistAlert` and `isBlocklistDecision` (`src/lapi/blocklist.ts`)
+  keep it out of every count even when LAPI sends it. `runPurge` took out
+  rows a pre-release build stored. It runs once per install, and only on
+  installs that synced before the fix.
+- **Self-hosted only.** Everything comes from the site's own LAPI and
+  Prometheus endpoints. Never call CrowdSec's cloud or Service API.
+- **Metrics are counters that reset.** `src/metrics/sample.ts` keeps the
+  last raw sample and stores differences, a drop being a reset. The first
+  sample is a baseline, and a source that was down at the baseline starts
+  its own. The sampler is its own cron task (`metrics`, seven calls),
+  because the sync tick has no calls to spare.
+- **One action id per button.** A shared `action_id` makes React warn about
+  duplicate keys. Range buttons are `cs:range:24h`, `cs:range:7d` and so on,
+  and row buttons carry the row's id.
 - **Never `ip=`.** It also matches alerts with an empty source. Search by
   `scope` and `value`.
 - **The User-Agent is load-bearing.** LAPI refuses a login whose

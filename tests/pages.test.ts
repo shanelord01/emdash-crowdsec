@@ -125,7 +125,7 @@ describe("the Decisions page against a LAPI", () => {
 		host = await newHost("lapi");
 		await respondLogin(host);
 		const alerts = sampleAlerts();
-		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`, json(alerts));
+		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`, json(alerts));
 		const page = await host.admin.loadPage(DECISIONS_PATH);
 		expectValid(host, page);
 		const table = page.blocks.find((b) => b.block_id === "cs:decisions:table") as unknown as { rows: Array<{ value: string; expires: string }>; columns: Array<{ key: string }> };
@@ -149,7 +149,7 @@ describe("rendering", () => {
 
 	it("draws daily charts on a category axis of local day labels, so no viewer sees a timestamp", () => {
 		const day = { ...emptyDay("2026-10-08", NOW), alerts: 3, waf: 3 };
-		const blocks = renderSecurity({ state, source: "lapi", zone: ZONE, range: 7, days: [day], now: NOW, lang: "en" });
+		const blocks = renderSecurity({ state, source: "lapi", zone: ZONE, range: 7, days: [day], traffic: [], metrics: null, metricsOn: false, now: NOW, lang: "en" });
 		expect(validateBlocks(blocks).valid).toBe(true);
 		const chart = blocks.find((b) => b.block_id === "cs:chart:alerts") as unknown as { config: { chart_type: string; options: { xAxis: { data: string[] } } } };
 		expect(chart.config.chart_type).toBe("custom");

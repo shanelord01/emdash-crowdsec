@@ -62,6 +62,19 @@ describe("the manifest description", () => {
 	});
 });
 
+describe("the admin labels", () => {
+	it("name CrowdSec, so the pages are not mistaken for another plugin's", () => {
+		const admin = manifest().admin as { pages: Array<{ path: string; label: string }>; widgets: Array<{ title: string }> };
+		expect(admin.pages).toEqual([
+			expect.objectContaining({ path: "/security", label: "CrowdSec" }),
+			expect.objectContaining({ path: "/security/alerts", label: "CrowdSec alerts" }),
+			expect.objectContaining({ path: "/security/decisions", label: "CrowdSec decisions" }),
+		]);
+		expect(admin.widgets[0]?.title).toBe("CrowdSec");
+		for (const text of [readme, ...Object.values(FILES)]) expect(text).not.toMatch(/Crowdsec\b/);
+	});
+});
+
 describe("the registry page's sections", () => {
 	const sections = manifest().sections as Record<string, { file: string }>;
 

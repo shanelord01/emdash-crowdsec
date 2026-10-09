@@ -8,6 +8,7 @@
  * alert rows.
  */
 
+import { isBlocklistScope } from "../lapi/blocklist.js";
 import type { RawAlert, RawMeta } from "../lapi/types.js";
 import { localDay, parseGoDuration, type Day } from "../sync/time.js";
 
@@ -38,6 +39,8 @@ export interface AlertRow {
 	bans: number;
 	/** The first decision's type, empty without one. */
 	decisionType: string;
+	/** The first decision's origin (`crowdsec`, `cscli`, `CAPI`, `lists`), empty without one. Absent on rows stored before it was kept. */
+	origin?: string;
 	/** When the alert's last decision ends, ISO 8601, as read. */
 	decisionUntil?: string;
 }
@@ -66,6 +69,18 @@ export interface DayRow {
 	paths: Record<string, number>;
 	ips: Record<string, number>;
 	seen: Array<[number, number]>;
+	updatedAt: string;
+}
+
+/**
+ * One local day of the engine's and the bouncer's counters: what each
+ * counted that day, summed from the differences between samples. `id` is
+ * the date. A difference is counted on the day of the sample that ends it.
+ */
+export interface TrafficDay {
+	date: Day;
+	counters: Record<string, number>;
+	samples: number;
 	updatedAt: string;
 }
 
@@ -147,6 +162,7 @@ export function compactAlert(raw: RawAlert, fetchedAt: Date, zone: string): Aler
 		decisions: decisions.length,
 		bans: decisions.filter((d) => (d.type ?? "").toLowerCase() === "ban").length,
 		decisionType: text(decisions[0]?.type),
+		origin: text(decisions[0]?.origin),
 		...(until !== undefined && { decisionUntil: new Date(until).toISOString() }),
 	};
 }
@@ -259,6 +275,41 @@ export function countInto(day: DayRow, alert: AlertRow): boolean {
 function bump(map: Record<string, number>, key: string): void {
 	if (!key) return;
 	map[key] = (map[key] ?? 0) + 1;
+}
+
+/**
+ * Was this stored row a community blocklist or list alert? Rows stored
+ * before LAPI was asked to leave those out may hold some. A row stored
+ * before `origin` was kept is known by its blocklist source scope, or by
+ * the empty source and many decisions such an alert has.
+ */
+export function isBlocklistRow(row: Pick<AlertRow, "origin" | "scope" | "ip" | "decisions" | "scenario">): boolean {
+	const origin = (row.origin ?? "").toLowerCase();
+	if (origin === "capi" || origin === "lists") return true;
+	if (isBlocklistScope(row.scope ?? "")) return true;
+	if (/^update : /.test(row.scenario ?? "")) return true;
+	return !row.ip && (row.decisions ?? 0) > 1;
+}
+
+/** Take a counted alert back out of its day: the totals and top lists, never its id, so it is not counted again. */
+export function uncountFrom(day: DayRow, alert: AlertRow): boolean {
+	if (alert.day !== day.date || !seenHas(day.seen, alert.id)) return false;
+	day.alerts = Math.max(0, day.alerts - 1);
+	day[alert.kind] = Math.max(0, day[alert.kind] - 1);
+	day.decisions = Math.max(0, day.decisions - (alert.decisions ?? 0));
+	day.bans = Math.max(0, day.bans - (alert.bans ?? 0));
+	for (const [map, key] of [
+		[day.scenarios, alert.scenario],
+		[day.countries, alert.country],
+		[day.asNames, alert.asName],
+		[day.paths, alert.path],
+		[day.ips, alert.ip],
+	] as const) {
+		if (!key || map[key] === undefined) continue;
+		if (map[key] <= 1) delete map[key];
+		else map[key]--;
+	}
+	return true;
 }
 
 /** Keep each top list of a day to its `DAY_TOP_KEEP` largest values. */

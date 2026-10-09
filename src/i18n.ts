@@ -23,10 +23,10 @@ const en = {
 	hours: { one: "{count} hour", other: "{count} hours" },
 	minutes: { one: "{count} minute", other: "{count} minutes" },
 	showingRows: "Rows {from} to {to}.",
-	openSecurity: "Open security",
-	securityPage: "Security",
-	alertsPage: "Alerts",
-	decisionsPage: "Decisions",
+	openSecurity: "Open CrowdSec",
+	securityPage: "CrowdSec",
+	alertsPage: "CrowdSec alerts",
+	decisionsPage: "CrowdSec decisions",
 	checkSetup: "Check setup",
 
 	// Kinds
@@ -35,7 +35,7 @@ const en = {
 	kindBehaviour: "Behaviour",
 	kindManual: "Manual",
 
-	// Widget and Security page
+	// Widget and the CrowdSec page
 	alerts24h: "Alerts, last 24 hours",
 	activeBans: "Active bans",
 	asOf: "as of {age}",
@@ -78,6 +78,54 @@ const en = {
 	syncRequested: "Sync requested. The numbers update with the next scheduled run.",
 	syncUnschedulable: "This site runs no scheduled tasks, so no sync can be requested.",
 
+	// Ranges and charts
+	range24h: "24 hours",
+	alertsByHour: "Alerts by hour",
+	bansByHour: "Bans issued by hour",
+	bans24h: "Bans issued, last 24 hours",
+	waf24h: "WAF blocks, last 24 hours",
+	whereFrom: "Where attacks come from",
+	alertsByCountry: "alerts by country, the ten with most",
+	topListsTwoDays: "In the 24-hour view they cover today and yesterday.",
+	colourBlue: "Blue",
+	colourYellow: "Yellow",
+	colourPink: "Pink",
+	colourPurple: "Purple",
+	colourTeal: "Teal",
+	colourOrange: "Orange",
+
+	// Traffic
+	originCommunity: "Community blocklist",
+	originDetections: "Your detections",
+	originManual: "Manual",
+	originOther: "Other",
+	trafficDiscarded: "Malicious traffic discarded",
+	trafficWaiting: "The first metrics sample sets the baseline. Traffic appears after the next sync.",
+	packetsDiscarded: "Packets discarded",
+	shareDiscarded: "Share of traffic discarded",
+	shareOf: "{share} of {processed} packets the firewall bouncer checked",
+	webRequests: "Web requests",
+	requestsInspected: "Requests inspected by AppSec",
+	requestsBlocked: "Requests blocked",
+	challengeFunnel: "Bot challenge",
+	challenges: "Challenges",
+	challenge_requested: "Requested",
+	challenge_submitted: "Submitted",
+	challenge_accepted: "Accepted",
+	challenge_rejected: "Rejected",
+	challenge_exempt: "Exempt",
+	challengesDay: "bot challenges at each stage, last 24 hours",
+	challengesRange: "bot challenges at each stage, last {days} days",
+	bansBySource: "Active bans by source",
+	activeDecisions: "Active decisions",
+	activeDecisionsNow: "active decisions now, by source",
+	colCommunityReason: "Community blocklist reason",
+	colDecisions: "Decisions",
+	trafficNote:
+		"From the security engine's and the firewall bouncer's own metrics, sampled with each sync since {age}. A counter that restarts is counted from its restart.",
+	discardedWeek: "Discarded this week",
+	packetsShort: "{count} packets",
+
 	// Alerts page
 	allKinds: "All kinds",
 	allScenarios: "All scenarios",
@@ -92,7 +140,7 @@ const en = {
 	deleteAlertText:
 		"Alert {id} ({scenario} from {ip}) is deleted from CrowdSec. This cannot be undone. Its decisions ended more than two minutes ago.",
 	deleteNote:
-		"Delete shows only on alerts whose decisions ended more than two minutes ago. Deleting an alert deletes its decisions where bouncers never hear of it, so a ban is lifted with Remove on the Decisions page instead.",
+		"Delete shows only on alerts whose decisions ended more than two minutes ago. Deleting an alert deletes its decisions where bouncers never hear of it, so a ban is lifted with Remove on the CrowdSec decisions page instead.",
 
 	// Decisions page
 	colType: "Type",
@@ -106,6 +154,14 @@ const en = {
 	decisionsNotRead: "List not read this time",
 	decisionsNotReadDetail: "The change used this request's share of calls. Press Refresh to read the list.",
 	noActiveDecisions: "No active decisions.",
+	blocklistCount: {
+		one: "Also enforcing {formatted} address from the CrowdSec community blocklist and lists, as of {age}. They are counted, not listed.",
+		other: "Also enforcing {formatted} addresses from the CrowdSec community blocklist and lists, as of {age}. They are counted, not listed.",
+	},
+	blocklistTooMany: "Also enforcing the CrowdSec community blocklist: too many addresses to count, as of {age}.",
+	alreadyBlocklisted: "The CrowdSec community blocklist already blocks it.",
+	onlyBlocklisted:
+		"{value} is blocked only by the CrowdSec community blocklist or a list, which the plugin does not remove: CrowdSec would add it back. To let it through, add it to a CrowdSec allowlist.",
 	remove: "Remove",
 	removeTitle: "Remove this decision?",
 	removeText: "The {type} on {value} is removed. Bouncers drop it on their next poll.",
@@ -113,7 +169,7 @@ const en = {
 	remainingHours: "{hours} h {minutes} min",
 	remainingMinutes: "{minutes} min",
 	remainingSeconds: "{seconds} s",
-	banTitle: "Ban an address",
+	banTitle: "Ban an address in CrowdSec",
 	protectedCaller: "Your address",
 	protectedSite: "This site",
 	protectedLapi: "CrowdSec LAPI host",
@@ -145,13 +201,13 @@ const en = {
 	banConfirmTitle: "Add this decision?",
 
 	// Setup check
-	setupTitle: "Setup check",
+	setupTitle: "CrowdSec setup check",
 	setupAllGood: "Everything the numbers depend on is in place.",
 	setupProblems: {
 		one: "{count} problem stops or distorts the numbers.",
 		other: "{count} problems stop or distort the numbers.",
 	},
-	backToSecurity: "Back to security",
+	backToSecurity: "Back to CrowdSec",
 	checkAgain: "Check again",
 	colCheck: "Check",
 	colStatus: "Status",
@@ -163,6 +219,12 @@ const en = {
 	checkSource: "Data source",
 	checkSettings: "Settings",
 	checkTimeZone: "Time zone",
+	checkEngineMetrics: "Engine metrics",
+	checkFirewallMetrics: "Firewall metrics",
+	metricsOff: "Not set: its traffic charts are off.",
+	metricsOk: { one: "Answers, {count} series read: {names}.", other: "Answers, {count} series read: {names}." },
+	metricsNone: "Answers, but none of the series the charts read: {expected}.",
+	metricsDeferred: "Not checked this time: the DNS lookup used this check's share of calls. Press Check again.",
 	checkUrl: "LAPI URL",
 	checkLogin: "Login",
 	checkUserAgent: "User-Agent",
@@ -237,6 +299,10 @@ const en = {
 		"The LAPI URL answered with a redirect (HTTP {status}), which the plugin does not follow, so the password is never sent to another address. Set the LAPI URL to the address the redirect points at.",
 	allowlistUnreadable:
 		"LAPI's allowlist check answered in a form the plugin cannot read, so the ban was not added. Check that the proxy admits POST /v1/allowlists/check.",
+	metricsUnreachable: "The metrics URL could not be reached: {detail}",
+	metricsRefused: "The proxy refused the metrics URL (403). Admit GET on it for this site's address, as the README shows.",
+	metricsHttp: "The metrics URL answered HTTP {status}.",
+	metricsNotPrometheus: "The metrics URL answered with a web page instead of Prometheus metrics: a sign-in or challenge page is in front of it.",
 	dnsFailed: "Looking up {name} for the ban protections failed: {detail}",
 	dnsEmpty: "{name} has no address, so a ban cannot be checked against it. Check the site URL and the LAPI URL.",
 	dnsJustLoaded: "The site's and the LAPI's addresses were just looked up for the ban protections. Try again.",
@@ -274,12 +340,12 @@ const en = {
 	removedSome: "Removed {count} decisions on {value}. {remaining} remain: run it again.",
 	alertGone: "Alert {id} is not in CrowdSec any more, so it was taken off the list.",
 	alertHasActiveDecision:
-		"Refused: alert {id} still has an active decision. Remove the decision on the Decisions page first, then delete the alert two minutes later.",
+		"Refused: alert {id} still has an active decision. Remove the decision on the CrowdSec decisions page first, then delete the alert two minutes later.",
 	alertDecisionJustEnded:
 		"Refused: a decision of alert {id} ended less than two minutes ago, and bouncers may not have heard yet. Try again in two minutes.",
 	alertDeleted: "Deleted alert {id}.",
 	alertDecisionUnknown:
-		"Refused: a decision of alert {id} has an end time the plugin cannot read, so it may still be in force. Remove the decision on the Decisions page first.",
+		"Refused: a decision of alert {id} has an end time the plugin cannot read, so it may still be in force. Remove the decision on the CrowdSec decisions page first.",
 	tryAgain: "The login used this request's share of calls. Try again.",
 } satisfies Record<string, Message>;
 

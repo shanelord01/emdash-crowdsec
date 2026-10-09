@@ -45,9 +45,9 @@ describe("the alert search", () => {
 	it("writes since as a duration back from now, widened by a minute, and until exactly, in a fixed order", () => {
 		const since = new Date(NOW.getTime() - 24 * 3_600_000);
 		const until = new Date(NOW.getTime() - 3_600_000);
-		expect(alertSearch({ since, until, limit: 200 }, NOW)).toBe("since=86460s&until=3600s&simulated=false&limit=200");
-		expect(alertSearch({ activeOnly: true, limit: 100, simulated: true }, NOW)).toBe("has_active_decision=true&simulated=true&limit=100");
-		expect(alertSearch({ scope: "Ip", value: "2001:db8::1", limit: 50 }, NOW)).toBe("scope=Ip&value=2001%3Adb8%3A%3A1&simulated=false&limit=50");
+		expect(alertSearch({ since, until, limit: 200 }, NOW)).toBe("since=86460s&until=3600s&simulated=false&include_capi=false&limit=200");
+		expect(alertSearch({ activeOnly: true, limit: 100, simulated: true }, NOW)).toBe("has_active_decision=true&simulated=true&include_capi=false&limit=100");
+		expect(alertSearch({ scope: "Ip", value: "2001:db8::1", limit: 50 }, NOW)).toBe("scope=Ip&value=2001%3Adb8%3A%3A1&simulated=false&include_capi=false&limit=50");
 	});
 
 	it("never searches with ip=", () => {
@@ -65,7 +65,7 @@ describe("the client", () => {
 		const c = client(lapi);
 		expect(await c.alerts({ limit: 1 })).toEqual({ ok: true, value: [] });
 		await c.alerts({ limit: 1 });
-		expect(lapi.seen.map((r) => r.url.replace(BASE, ""))).toEqual(["/v1/watchers/login", "/v1/alerts?simulated=false&limit=1", "/v1/alerts?simulated=false&limit=1"]);
+		expect(lapi.seen.map((r) => r.url.replace(BASE, ""))).toEqual(["/v1/watchers/login", "/v1/alerts?simulated=false&include_capi=false&limit=1", "/v1/alerts?simulated=false&include_capi=false&limit=1"]);
 		expect(JSON.parse(lapi.seen[0]!.body!)).toEqual({ machine_id: "emdash-crowdsec", password: "pw", scenarios: [] });
 		for (const req of lapi.seen) expect(req.headers["user-agent"]).toBe(USER_AGENT);
 		expect(USER_AGENT).toMatch(/^emdash-crowdsec\/\d+\.\d+\.\d+$/);
@@ -88,7 +88,7 @@ describe("the client", () => {
 		await c.alerts({ until: new Date(NOW.getTime() - 3_600_000), limit: 5 });
 		expect(c.skewMs).toBe(90_000);
 		// LAPI's now is 90 s later, so the upper bound is 90 s further back from it.
-		expect(lapi.seen[1]!.url).toBe(`${BASE}/v1/alerts?until=3690s&simulated=false&limit=5`);
+		expect(lapi.seen[1]!.url).toBe(`${BASE}/v1/alerts?until=3690s&simulated=false&include_capi=false&limit=5`);
 	});
 
 	it("names each failure in a sentence", async () => {

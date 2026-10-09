@@ -21,16 +21,25 @@ import { langOf, problemText, t, type Lang } from "./i18n.js";
 import { readSettings, settingsOf, type CrowdSecSettings, type SettingsResult } from "./settings.js";
 import { buildSource } from "./sources.js";
 import { callerAddresses } from "./net/protect.js";
+import { isBlocklistDecision } from "./lapi/blocklist.js";
+import { sameNetwork } from "./net/ip.js";
+import { parseGoDuration } from "./sync/time.js";
 import {
 	ACTIVE_BATCH,
 	BANS_TASK,
+	BLOCKLIST_NOW_TASK,
+	BLOCKLIST_TASK,
 	CATCH_UP_TASKS,
+	METRICS_TASK,
+	metricsOn,
+	runMetrics,
 	ensureScheduled,
 	loadKv,
 	noteWaiting,
 	RECONCILE_TASK,
 	REFRESH_TASK,
 	requestTask,
+	runBlocklistCount,
 	runReconcile,
 	runSync,
 	SYNC_TASK,
@@ -47,6 +56,7 @@ import {
 	securitySummary,
 	TOOL_ROUTES,
 	topThreats,
+	trafficSummary,
 } from "./tools/load.js";
 import { loadAlerts, parseAlertsInput, renderAlerts, scenariosOf, type AlertsView } from "./ui/alerts.js";
 import { decisionRows, parseDecisionsView, protectedView, readActive, renderDecisions, type DecisionsView } from "./ui/decisions.js";
@@ -57,12 +67,11 @@ import {
 	DECISIONS_PATH,
 	DECISIONS_REMOVE,
 	PAGE_REFRESH,
-	RANGE_ACTION,
 	SECURITY_PATH,
 	SETUP_ACTION,
 	WIDGET_REFRESH,
 } from "./ui/ids.js";
-import { DEFAULT_RANGE, loadDays, parseRange, renderSecurity, type RangeDays } from "./ui/security.js";
+import { DEFAULT_RANGE, loadDays, loadTraffic, parseRange, readSince, renderSecurity, type RangeDays } from "./ui/security.js";
 import { renderSetup, runSetup } from "./ui/setup.js";
 import { renderWidget } from "./ui/widget.js";
 import { asRecord } from "./values.js";
@@ -113,6 +122,14 @@ const plugin: SandboxedPlugin = {
 					await runSync(ctx, new Date(), "catchup", event.name);
 					return;
 				}
+				if (event.name === METRICS_TASK) {
+					await runMetrics(ctx);
+					return;
+				}
+				if (event.name === BLOCKLIST_TASK || event.name === BLOCKLIST_NOW_TASK) {
+					await runBlocklistCount(ctx);
+					return;
+				}
 				if (event.name === RECONCILE_TASK) {
 					const settings = settingsOf(await readSettings(ctx));
 					await runReconcile(ctx, settings);
@@ -144,6 +161,11 @@ const plugin: SandboxedPlugin = {
 			handler: async (routeCtx, ctx) => await addressAlerts(ctx, routeCtx.input, new Date()),
 		},
 
+		[TOOL_ROUTES.traffic]: {
+			permission: "plugins:read",
+			handler: async (routeCtx, ctx) => await trafficSummary(ctx, routeCtx.input, new Date()),
+		},
+
 		// Writes: administrators only, enforced by the host.
 		[TOOL_ROUTES.ban]: {
 			permission: "plugins:manage",
@@ -168,15 +190,15 @@ const plugin: SandboxedPlugin = {
  * gets `plugin:activate`. `schedule` upserts, so repeating it is harmless.
  */
 async function scheduleFromSettings(ctx: PluginContext, settings?: CrowdSecSettings): Promise<void> {
-	let interval = settings?.syncInterval;
-	if (!interval) {
+	let known = settings;
+	if (!known) {
 		try {
-			interval = settingsOf(await readSettings(ctx)).syncInterval;
+			known = settingsOf(await readSettings(ctx));
 		} catch {
-			interval = "*/15 * * * *";
+			known = undefined;
 		}
 	}
-	await ensureScheduled(ctx, interval);
+	await ensureScheduled(ctx, known?.syncInterval ?? "*/15 * * * *", known ? metricsOn(known) : false);
 }
 
 function callerOf(routeCtx: AdminRouteContext): Caller {
@@ -200,14 +222,28 @@ async function handleAdmin(routeCtx: AdminRouteContext, ctx: PluginContext) {
 	if (page === DECISIONS_PATH) return await decisionsPage(ctx, input, actionId, loaded, result, caller, now, lang);
 
 	// The widget.
+	const widgetOf = async () => {
+		const traffic = metricsOn(settings) ? await loadTraffic(ctx, addDays(localDay(now, settings.timeZone), -13)) : undefined;
+		return renderWidget({
+			state: loaded.state,
+			source: settings.source,
+			zone: settings.timeZone,
+			now,
+			lang,
+			...(traffic && { traffic }),
+			...(loaded.metrics && { sampledSince: loaded.metrics.since }),
+		});
+	};
 	if (input.type === "block_action" && actionId === WIDGET_REFRESH) {
 		const toast = await requestRefresh(ctx, result, now, lang);
-		return { blocks: renderWidget({ state: loaded.state, source: settings.source, zone: settings.timeZone, now, lang }), toast };
+		return { blocks: await widgetOf(), toast };
 	}
 	// Every dashboard visit schedules, the entry point a `plugins: []` install relies on.
 	await scheduleFromSettings(ctx, settings);
 	await noteWaiting(ctx, loaded, now);
-	return { blocks: renderWidget({ state: loaded.state, source: settings.source, zone: settings.timeZone, now, lang }) };
+	// The blocklist is counted daily. Before its first count, ask for one now.
+	if (result.ok && settings.source === "lapi" && !loaded.blocklist) await requestTask(ctx, BLOCKLIST_NOW_TASK, now);
+	return { blocks: await widgetOf() };
 }
 
 /** Refresh schedules a step rather than running one: a route has the same ten calls and still has to render. */
@@ -232,14 +268,29 @@ async function securityPage(
 	const settings = settingsOf(result);
 	const isAction = input.type === "block_action";
 	const range: RangeDays = isAction ? parseRange(input.value) : DEFAULT_RANGE;
+	// Each range button has an id of its own (`cs:range:24h`), and every one carries its range as its value.
 	if (isAction && actionId === SETUP_ACTION) {
 		const checks = await runSetup(ctx, loaded, result, now, lang);
 		return { blocks: renderSetup(checks, range, lang) };
 	}
 	let toast: Toast | undefined;
 	if (isAction && actionId === PAGE_REFRESH) toast = await requestRefresh(ctx, result, now, lang);
-	const days = await loadDays(ctx, addDays(localDay(now, settings.timeZone), -(range * 2 - 1)));
-	const blocks = renderSecurity({ state: loaded.state, source: settings.source, zone: settings.timeZone, range, days, now, lang });
+	const since = readSince(range, localDay(now, settings.timeZone));
+	const days = await loadDays(ctx, since);
+	const on = metricsOn(settings);
+	const traffic = on && range !== 1 ? await loadTraffic(ctx, since) : [];
+	const blocks = renderSecurity({
+		state: loaded.state,
+		source: settings.source,
+		zone: settings.timeZone,
+		range,
+		days,
+		traffic,
+		metrics: loaded.metrics,
+		metricsOn: on,
+		now,
+		lang,
+	});
 	return toast ? { blocks, toast } : { blocks };
 }
 
@@ -346,7 +397,24 @@ async function decisionsPage(
 					// The review runs every rule the ban will, the allowlist included.
 					const allow = await checkAllowlist(source.lapi, checked.value.value);
 					if (!allow.ok) toast = { message: problemText(lang, allow.problem), type: "error" };
-					else review = { check: checked.value, input: parsed.value };
+					else {
+						// And says when the community blocklist already blocks the address.
+						// Informational: a failed lookup leaves the note out.
+						const look = await source.lapi.alerts({
+							scope: checked.value.scope,
+							value: checked.value.value,
+							activeOnly: true,
+							limit: 20,
+							simulated: true,
+							blocklists: "include",
+						});
+						const blocklisted =
+							look.ok &&
+							look.value.some((alert) =>
+								(alert.decisions ?? []).some((d) => isBlocklistDecision(d) && sameNetwork(d.value, checked.value.value) && (parseGoDuration(d.duration) ?? 0) > 0),
+							);
+						review = { check: checked.value, input: parsed.value, ...(blocklisted && { blocklisted }) };
+					}
 				}
 			} else {
 				const res = await addBan(ctx, source.lapi, settings, loaded.dns, caller, parsed.value, now);
@@ -403,6 +471,7 @@ async function decisionsPage(
 			protectedSet: protectedView({ callers: callerAddresses(caller), siteUrl: ctx.site.url, settings, dns: loaded.dns }),
 		}),
 		...(review && { review }),
+		blocklist: loaded.blocklist,
 		zone: settings.timeZone,
 		now,
 		lang,

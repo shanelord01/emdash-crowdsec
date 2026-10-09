@@ -15,15 +15,17 @@
 import type { PluginContext } from "emdash/plugin";
 
 import { problemText } from "../i18n.js";
+import { isBlocklistAlert, isBlocklistDecision } from "../lapi/blocklist.js";
 import type { RawAlert } from "../lapi/types.js";
 import { displayNetwork, isSingleAddress, parseNetwork, sameNetwork } from "../net/ip.js";
 import { readSettings, settingsOf } from "../settings.js";
 import { buildSource } from "../sources.js";
 import { compactAlert, KINDS, ranked, sumMaps, type Kind } from "../store/rows.js";
-import { ACTIVE_BATCH, coveredSince, loadKv, sumHours, type ActiveSnapshot } from "../sync/scheduler.js";
+import { ACTIVE_BATCH, coveredSince, loadKv, metricsOn, sumHours, type ActiveSnapshot } from "../sync/scheduler.js";
 import { readActive } from "../ui/decisions.js";
 import { addDays, daysBetween, localDay, parseGoDuration, type Day } from "../sync/time.js";
-import { loadDays } from "../ui/security.js";
+import { loadDays, loadTraffic } from "../ui/security.js";
+import { discarded, sumCounters } from "../metrics/sample.js";
 import { decisionRows } from "../ui/decisions.js";
 import { asRecord } from "../values.js";
 import { addBan, deleteAlert, parseBanInput, removeBansOn, writeGate, type Caller } from "../write/actions.js";
@@ -36,6 +38,7 @@ export const TOOL_ROUTES = {
 	ban: "mcp/ban_ip",
 	removeBan: "mcp/remove_ban",
 	deleteAlert: "mcp/delete_alert",
+	traffic: "mcp/traffic_summary",
 } as const;
 
 export const RANGE_DAYS = [7, 30, 90] as const;
@@ -86,6 +89,7 @@ export interface DecisionsResult {
 	readAt: string;
 	total: number;
 	truncated: boolean;
+	communityBlocklist: { addresses: number | null; at: string } | null;
 	decisions: Array<{
 		id: number;
 		value: string;
@@ -102,6 +106,7 @@ export interface DecisionsResult {
 export interface AddressAlertsResult {
 	address: string;
 	truncated: boolean;
+	communityBlocklist: Array<{ id: number; origin: string; scenario: string; type: string; remainingSeconds: number }>;
 	alerts: Array<{
 		id: number;
 		startedAt: string;
@@ -112,6 +117,22 @@ export interface AddressAlertsResult {
 		path: string;
 		decisions: Array<{ id: number; type: string; remainingSeconds: number }>;
 	}>;
+}
+
+type OriginCounts = { community: number; detections: number; manual: number; other: number };
+
+export interface TrafficResult {
+	window: ToolWindow;
+	/** False when no metrics URL is set and the data is not demo data. */
+	enabled: boolean;
+	sampledSince: string | null;
+	discarded: { packets: number; bytes: number; packetsByOrigin: OriginCounts; bytesByOrigin: OriginCounts };
+	processedPackets: number;
+	/** Discarded packets as a share of the packets the bouncer checked, 0 to 1, or null when it checked none. */
+	share: number | null;
+	appsec: { inspected: number; blocked: number };
+	challenge: { requested: number; submitted: number; accepted: number; rejected: number; exempt: number };
+	activeByOrigin: OriginCounts | null;
 }
 
 export interface WriteToolResult {
@@ -209,6 +230,45 @@ export async function topThreats(ctx: PluginContext, input: unknown, now: Date):
 	};
 }
 
+/**
+ * Malicious traffic discarded and web requests over 7, 30 or 90 days, from
+ * the stored traffic days the metrics sampler fills.
+ * Calls: kv.list, settings.list, one or two traffic queries.
+ */
+export async function trafficSummary(ctx: PluginContext, input: unknown, now: Date): Promise<TrafficResult> {
+	const days = pickDays(asRecord(input).days);
+	const loaded = await loadKv(ctx);
+	const settings = settingsOf(await readSettings(ctx));
+	const zone = settings.timeZone;
+	const today = localDay(now, zone);
+	const since = addDays(today, -(days - 1));
+	const metrics = loaded.metrics;
+	const window: ToolWindow = { days, since, until: today, partial: !metrics || localDay(metrics.since, zone) > since };
+	const rows = metricsOn(settings) ? await loadTraffic(ctx, since) : [];
+	const c = sumCounters(rows.filter((r) => r.date <= today).map((r) => r.counters));
+	const packets = discarded(c, "packets");
+	const bytes = discarded(c, "bytes");
+	const strip = (d: OriginCounts & { total: number }): OriginCounts => ({ community: d.community, detections: d.detections, manual: d.manual, other: d.other });
+	const processed = c["proc.packets"] ?? 0;
+	return {
+		window,
+		enabled: metricsOn(settings),
+		sampledSince: metrics?.since ?? null,
+		discarded: { packets: packets.total, bytes: bytes.total, packetsByOrigin: strip(packets), bytesByOrigin: strip(bytes) },
+		processedPackets: processed,
+		share: processed > 0 ? Math.round((Math.min(1, packets.total / processed)) * 10_000) / 10_000 : null,
+		appsec: { inspected: c["as.reqs"] ?? 0, blocked: c["as.blocks"] ?? 0 },
+		challenge: {
+			requested: c["ch.requested"] ?? 0,
+			submitted: c["ch.submitted"] ?? 0,
+			accepted: c["ch.accepted"] ?? 0,
+			rejected: c["ch.rejected"] ?? 0,
+			exempt: c["ch.exempt"] ?? 0,
+		},
+		activeByOrigin: metrics?.gauges ? { ...metrics.gauges.bansByOrigin } : null,
+	};
+}
+
 /** The active decisions, read live. Calls: kv.list, settings.list, the login and up to three searches, each half the last after an answer over 8 MiB. */
 export async function activeDecisions(ctx: PluginContext, input: unknown, now: Date): Promise<DecisionsResult> {
 	const limit = limitOf(asRecord(input).limit, DEFAULT_DECISIONS, MAX_DECISIONS);
@@ -224,6 +284,7 @@ export async function activeDecisions(ctx: PluginContext, input: unknown, now: D
 		readAt: now.toISOString(),
 		total: rows.length,
 		truncated: res.value.truncated || rows.length > limit,
+		communityBlocklist: loaded.blocklist ? { addresses: loaded.blocklist.addresses, at: loaded.blocklist.at } : null,
 		decisions: rows.slice(0, limit).map((row) => ({
 			id: row.id,
 			value: row.value,
@@ -255,18 +316,29 @@ export async function addressAlerts(ctx: PluginContext, input: unknown, now: Dat
 	if (!result.ok) throw new Error(problemText("en", result.problem));
 	const source = buildSource(ctx, result.settings, loaded.state.skewMs);
 	if (!source) throw new Error(problemText("en", { key: "noNetwork" }));
+	// One address's search includes the community blocklist and lists, so
+	// the answer can say the address is on one. Their alerts are not listed.
 	const res = await source.alerts({
 		scope: isSingleAddress(network) ? "Ip" : "Range",
 		value: address,
 		limit: ADDRESS_ALERTS,
 		simulated: result.settings.includeSimulated,
+		blocklists: "include",
 	});
 	if (!res.ok) throw new Error(problemText("en", res.problem));
+	const blocklist = res.value.flatMap((raw) =>
+		(raw.decisions ?? []).flatMap((d) => {
+			const left = parseGoDuration(d.duration);
+			if (!isBlocklistDecision(d) || typeof d.id !== "number" || !sameNetwork(d.value, address) || left === null || left <= 0) return [];
+			return [{ id: d.id, origin: d.origin ?? "", scenario: d.scenario ?? "", type: d.type ?? "", remainingSeconds: Math.round(left) }];
+		}),
+	);
 	return {
 		address,
 		truncated: res.value.length >= ADDRESS_ALERTS,
+		communityBlocklist: blocklist,
 		alerts: res.value.flatMap((raw: RawAlert) => {
-			if (!sameNetwork(raw.source?.value, address)) return [];
+			if (isBlocklistAlert(raw) || !sameNetwork(raw.source?.value, address)) return [];
 			const row = compactAlert(raw, now, result.settings.timeZone);
 			if (!row) return [];
 			return [

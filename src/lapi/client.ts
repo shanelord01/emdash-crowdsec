@@ -257,7 +257,10 @@ export function alertSearch(query: AlertQuery, now: Date): string {
 		add("value", query.value);
 	}
 	if (query.activeOnly) add("has_active_decision", "true");
+	if (query.origin) add("origin", query.origin);
 	add("simulated", query.simulated ? "true" : "false");
+	// LAPI includes community blocklist and list alerts unless told not to.
+	if (!query.origin && query.blocklists !== "include") add("include_capi", "false");
 	add("limit", String(query.limit));
 	return params.join("&");
 }

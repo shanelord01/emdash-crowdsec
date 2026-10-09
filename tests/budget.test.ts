@@ -84,7 +84,7 @@ describe("sync ticks against a LAPI", () => {
 		host = await newHost("lapi");
 		const now = Date.now();
 		const to = new Date(now - 10 * DAY).toISOString();
-		await setState(host, { dataset: DATASET, head: new Date(now).toISOString(), gaps: [{ from: floorOf({ retentionDays: 90, timeZone: ZONE }, new Date(now)), to }], lastSync: to });
+		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date(now).toISOString(), gaps: [{ from: floorOf({ retentionDays: 90, timeZone: ZONE }, new Date(now)), to }], lastSync: to });
 		await respondLogin(host);
 		const batch = alertsBack(DEFAULT_BATCH, Date.parse(to) - 60_000, (29 * DAY) / DEFAULT_BATCH);
 		await respondSearch(host, () => ({ since: new Date(Date.parse(to) - 30 * DAY), until: new Date(to), limit: DEFAULT_BATCH, simulated: false }), batch);
@@ -99,7 +99,7 @@ describe("sync ticks against a LAPI", () => {
 	it("a forward tick whose full batch leaves a gap", async () => {
 		host = await newHost("lapi");
 		const head = new Date(Date.now() - 6 * 3_600_000).toISOString();
-		await setState(host, { dataset: DATASET, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { blocklistPurged: true, dataset: DATASET, head, gaps: [], slot: 0, lastSync: head });
 		await respondLogin(host);
 		const batch = alertsBack(DEFAULT_BATCH, Date.now() - 60_000, 60_000);
 		await respondSearch(host, (now) => ({ since: new Date(now.getTime() - DAY), limit: DEFAULT_BATCH, simulated: false }), batch);
@@ -112,7 +112,7 @@ describe("sync ticks against a LAPI", () => {
 
 	it("the bans slot when the DNS cache for the ban protections is cold: two hostnames, A and AAAA each", async () => {
 		host = await newHost("lapi", { allowChanges: true });
-		await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		for (const name of ["www.example.test", "lapi.example.test"]) {
 			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=A`, json({ Answer: [{ type: 1, data: "198.51.100.10" }] }));
 			await host.http.respond(`https://cloudflare-dns.com/dns-query?name=${name}&type=AAAA`, json({ Answer: [{ type: 28, data: "2001:db8::10" }] }));
@@ -127,13 +127,13 @@ describe("sync ticks against a LAPI", () => {
 
 	it("the bans slot when the lookup fails after three requests, which still counts the bans", async () => {
 		host = await newHost("lapi", { allowChanges: true });
-		await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		// Names go in order: the LAPI host answers both, the site's first request fails.
 		await host.http.respond("https://cloudflare-dns.com/dns-query?name=lapi.example.test&type=A", json({ Answer: [{ type: 1, data: "198.51.100.20" }] }));
 		await host.http.respond("https://cloudflare-dns.com/dns-query?name=lapi.example.test&type=AAAA", json({}));
 		await host.http.respond("https://cloudflare-dns.com/dns-query?name=www.example.test&type=A", json({}, 500));
 		await respondLogin(host);
-		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`, json(sampleAlerts()));
+		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`, json(sampleAlerts()));
 
 		const calls = await bridgeCalls(tick(host));
 
@@ -154,9 +154,9 @@ describe("sync ticks against a LAPI", () => {
 	it("the bans slot with a warm cache, and the bans and refresh one-shots", async () => {
 		host = await newHost("lapi", { allowChanges: true });
 		await warmDns(host);
-		const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`;
+		const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`;
 		for (const [name, slot] of [["sync", 2], ["bans", 0]] as const) {
-			await setState(host, { dataset: DATASET, head: new Date().toISOString(), gaps: [], slot, lastSync: "x" });
+			await setState(host, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], slot, lastSync: "x" });
 			await respondLogin(host);
 			await host.http.respond(activeUrl, json(sampleAlerts()));
 			within(await bridgeCalls(tick(host, name)));
@@ -227,7 +227,7 @@ describe("the live read of active decisions", () => {
 });
 
 describe("admin requests", () => {
-	const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`;
+	const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`;
 
 	async function withDays(runtime: PluginRuntimeTestHost) {
 		for (let i = 0; i < 180; i++) {
@@ -240,7 +240,8 @@ describe("admin requests", () => {
 		host = await newHost("demo");
 		const load = await bridgeCalls(() => host!.admin.loadWidget("security"));
 		within(load);
-		expect(load.filter((c) => c === "cronSchedule")).toHaveLength(2);
+		// The sync, the nightly prune, the daily blocklist count and, with demo data, the metrics sampler.
+		expect(load.filter((c) => c === "cronSchedule")).toHaveLength(4);
 		within(await bridgeCalls(() => host!.admin.act("widget:security", WIDGET_REFRESH)));
 	});
 
@@ -293,11 +294,12 @@ describe("admin requests", () => {
 		}
 		const values = { value: "203.0.113.70", duration: "4h", type: "ban", note: "" };
 		within(await bridgeCalls(() => host!.admin.submit(DECISIONS_PATH, BAN_REVIEW, values)));
-		// A review with a warm cache: the login, the allowlist check and the list read again.
+		// A review with a warm cache: the login, the allowlist check, the blocklist lookup and the list read again.
 		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.70&has_active_decision=true&simulated=true&limit=20`, json([]));
 		const review = await bridgeCalls(() => host!.admin.submit(DECISIONS_PATH, BAN_REVIEW, values));
 		within(review);
-		expect(review.filter((c) => c === "httpFetch")).toHaveLength(3);
+		expect(review.filter((c) => c === "httpFetch")).toHaveLength(4);
 
 		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
 		await host.http.respond(`${LAPI}/v1/alerts`, json(["903"], 201));
@@ -324,7 +326,7 @@ describe("MCP tools", () => {
 		within(await call(host, TOOL_ROUTES.summary, { days: 90 }));
 		within(await call(host, TOOL_ROUTES.top, { days: 90, limit: 25 }));
 		await respondLogin(host, 200, 2);
-		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`, json(sampleAlerts()));
+		await host.http.respond(`${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`, json(sampleAlerts()));
 		within(await call(host, TOOL_ROUTES.decisions, { limit: 100 }));
 		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.14&simulated=false&limit=50`, json(sampleAlerts()));
 		within(await call(host, TOOL_ROUTES.ipAlerts, { address: "203.0.113.14" }));

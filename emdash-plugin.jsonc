@@ -38,10 +38,11 @@
 	// `network:request:unrestricted`, with `allowedHosts` empty as that
 	// capability requires, because the CrowdSec Local API lives on a host
 	// the operator types into the settings, which no allow-list written here
-	// can name. The plugin requests two places: that LAPI URL, and, only
-	// while Allow changes is on, `cloudflare-dns.com` (DNS over HTTPS) to
-	// look up the site's and the LAPI's own addresses so a ban can never
-	// cover them.
+	// can name. The plugin requests the LAPI URL, the two optional metrics
+	// URLs the operator enters, and, only while Allow changes is on,
+	// `cloudflare-dns.com` (DNS over HTTPS) to look up the site's and the
+	// LAPI's own addresses so a ban can never cover them. Nothing is asked
+	// of CrowdSec's cloud.
 	//
 	// No content capabilities: the plugin reads and writes nothing of the
 	// site's content, users or media.
@@ -58,7 +59,13 @@
 		// One row per local day: totals by kind, bans issued, the day's top
 		// 25 scenarios, countries, AS organisations, paths and addresses, and
 		// the alert ids already counted. Charts and top lists read these.
-		"days": { "indexes": ["date"] }
+		"days": { "indexes": ["date"] },
+
+		// One row per local day of the security engine's and the firewall
+		// bouncer's counters (packets discarded by origin, packets checked,
+		// AppSec requests and blocks, bot challenges), summed from the
+		// differences between samples. Written only while a metrics URL is set.
+		"traffic": { "indexes": ["date"] }
 	},
 
 	"admin": {
@@ -123,6 +130,16 @@
 				"default": "Australia/Sydney",
 				"description": "An IANA time zone name such as Australia/Sydney or Europe/Berlin. Days, charts and retention run in it. An unknown name pauses the sync until it is fixed, and the pages use Australia/Sydney meanwhile. Changing it to another valid zone clears the stored alerts and reads them again."
 			},
+			"engineMetricsUrl": {
+				"type": "string",
+				"label": "Engine metrics URL",
+				"description": "Optional. The security engine's Prometheus metrics (port 6060, /metrics) on a public HTTPS path, for example https://www.example.com/crowdsec-lapi/metrics/engine. Turns on the web request and bot challenge charts and active bans by source. Leave empty to keep them off."
+			},
+			"firewallMetricsUrl": {
+				"type": "string",
+				"label": "Firewall metrics URL",
+				"description": "Optional. The firewall bouncer's Prometheus metrics (port 60601, /metrics, with prometheus enabled in its configuration) on a public HTTPS path. Turns on the malicious traffic discarded charts. Leave empty to keep them off."
+			},
 			"allowChanges": {
 				"type": "boolean",
 				"label": "Allow changes",
@@ -138,11 +155,13 @@
 		},
 
 		"pages": [
-			{ "path": "/security", "label": "Security", "icon": "shield" },
-			{ "path": "/security/alerts", "label": "Security alerts", "icon": "warning" },
-			{ "path": "/security/decisions", "label": "Security decisions", "icon": "prohibit" }
+			// Labelled CrowdSec, not Security, so the pages are not mistaken for
+			// another plugin's. The paths stay as they were.
+			{ "path": "/security", "label": "CrowdSec", "icon": "shield" },
+			{ "path": "/security/alerts", "label": "CrowdSec alerts", "icon": "warning" },
+			{ "path": "/security/decisions", "label": "CrowdSec decisions", "icon": "prohibit" }
 		],
-		"widgets": [{ "id": "security", "title": "Security", "size": "half" }]
+		"widgets": [{ "id": "security", "title": "CrowdSec", "size": "half" }]
 	},
 
 	// The registry page's tabs. Profile-level: they carry across releases.

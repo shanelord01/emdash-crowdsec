@@ -1,0 +1,1005 @@
+# HELP cs_active_decisions Number of active decisions.
+# TYPE cs_active_decisions gauge
+cs_active_decisions{action="ban",origin="CAPI",reason="http:crawl"} 15
+cs_active_decisions{action="ban",origin="CAPI",reason="http:exploit"} 450
+cs_active_decisions{action="ban",origin="CAPI",reason="http:scan"} 20919
+cs_active_decisions{action="ban",origin="CAPI",reason="ssh:bruteforce"} 2501
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/appsec-bot-challenge-too-many-requests"} 11
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-admin-interface-probing"} 1
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-bad-user-agent"} 3
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-crawl-non_statics"} 1
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-path-traversal-probing"} 1
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-probing"} 2
+cs_active_decisions{action="ban",origin="crowdsec",reason="crowdsecurity/http-sensitive-files"} 1
+# HELP cs_alerts Number of alerts (excluding CAPI).
+# TYPE cs_alerts gauge
+cs_alerts{reason="crowdsecurity/CVE-2017-9841"} 7
+cs_alerts{reason="crowdsecurity/CVE-2019-18935"} 2
+cs_alerts{reason="crowdsecurity/appsec-bot-challenge-too-many-requests"} 122
+cs_alerts{reason="crowdsecurity/appsec-vpatch"} 6
+cs_alerts{reason="crowdsecurity/generic-wordpress-uploads-listing"} 10
+cs_alerts{reason="crowdsecurity/generic-wordpress-uploads-php"} 9
+cs_alerts{reason="crowdsecurity/http-admin-interface-probing"} 9
+cs_alerts{reason="crowdsecurity/http-backdoors-attempts"} 11
+cs_alerts{reason="crowdsecurity/http-bad-user-agent"} 18
+cs_alerts{reason="crowdsecurity/http-crawl-non_statics"} 14
+cs_alerts{reason="crowdsecurity/http-cve-2021-41773"} 12
+cs_alerts{reason="crowdsecurity/http-cve-2021-42013"} 11
+cs_alerts{reason="crowdsecurity/http-cve-probing"} 15
+cs_alerts{reason="crowdsecurity/http-generic-test"} 1
+cs_alerts{reason="crowdsecurity/http-open-proxy"} 9
+cs_alerts{reason="crowdsecurity/http-path-traversal-probing"} 1
+cs_alerts{reason="crowdsecurity/http-probing"} 41
+cs_alerts{reason="crowdsecurity/http-sensitive-files"} 13
+cs_alerts{reason="crowdsecurity/http-technology-probing"} 4
+cs_alerts{reason="crowdsecurity/http-wordpress-scan"} 5
+cs_alerts{reason="crowdsecurity/jira_cve-2021-26086"} 6
+cs_alerts{reason="crowdsecurity/netgear_rce"} 1
+cs_alerts{reason="crowdsecurity/rejected-browser-submission"} 63
+cs_alerts{reason="crowdsecurity/ssh-time-based-bf"} 1
+cs_alerts{reason="crowdsecurity/vpatch-CVE-2017-9841"} 2
+cs_alerts{reason="crowdsecurity/vpatch-CVE-2025-29927"} 132
+cs_alerts{reason="crowdsecurity/vpatch-CVE-2025-55182"} 5
+cs_alerts{reason="crowdsecurity/vpatch-CVE-2026-63030"} 4
+cs_alerts{reason="crowdsecurity/vpatch-env-access"} 14
+cs_alerts{reason="crowdsecurity/vpatch-git-config"} 23
+cs_alerts{reason="manual ban from emdash-crowdsec test"} 1
+# HELP cs_appsec_block_total Total events blocked by the Application Security Engine.
+# TYPE cs_appsec_block_total counter
+cs_appsec_block_total{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 199
+# HELP cs_appsec_challenge_accepted_total Total challenge cookies issued, by kind (solved=valid submission, granted=GrantChallengeCookie) and (for granted) operator-supplied reason.
+# TYPE cs_appsec_challenge_accepted_total counter
+cs_appsec_challenge_accepted_total{appsec_engine="127.0.0.1:7422/",kind="solved",reason="",source="127.0.0.1"} 37
+# HELP cs_appsec_challenge_dynamic_module_evicted_total Total per-epoch dynamic-module cache entries evicted once their epoch left the keyring live window.
+# TYPE cs_appsec_challenge_dynamic_module_evicted_total counter
+cs_appsec_challenge_dynamic_module_evicted_total 1259
+# HELP cs_appsec_challenge_exempt_total Total requests exempt from the challenge, by reason (bot kind or path class).
+# TYPE cs_appsec_challenge_exempt_total counter
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="ahrefs",source="127.0.0.1"} 166
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="amazonbot",source="127.0.0.1"} 144
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="api",source="127.0.0.1"} 194
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="applebot",source="127.0.0.1"} 55
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="babbar",source="127.0.0.1"} 1
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="baidu",source="127.0.0.1"} 28
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="bingbot",source="127.0.0.1"} 119
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="crawler-files",source="127.0.0.1"} 524
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="crowdsec-lapi",source="127.0.0.1"} 54
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="duckduckbot",source="127.0.0.1"} 10
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="emdash-api",source="127.0.0.1"} 1063
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="feeds",source="127.0.0.1"} 464
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="googlebot",source="127.0.0.1"} 190
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="googleother",source="127.0.0.1"} 70
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="gptbot",source="127.0.0.1"} 10
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="image-transform",source="127.0.0.1"} 1
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="openai-chatgpt-user",source="127.0.0.1"} 6
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="openai-searchbot",source="127.0.0.1"} 51
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="perplexitybot",source="127.0.0.1"} 122
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="semrush",source="127.0.0.1"} 175
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="seznam",source="127.0.0.1"} 1
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="sitemaps",source="127.0.0.1"} 25
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="sogou",source="127.0.0.1"} 131
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="static",source="127.0.0.1"} 1424
+cs_appsec_challenge_exempt_total{appsec_engine="127.0.0.1:7422/",reason="twitterbot",source="127.0.0.1"} 2
+# HELP cs_appsec_challenge_kepoch_evicted_total Total per-epoch challenge signing keys evicted from the keyring cache (generated minus evicted is the live cache size).
+# TYPE cs_appsec_challenge_kepoch_evicted_total counter
+cs_appsec_challenge_kepoch_evicted_total 1258
+# HELP cs_appsec_challenge_kepoch_generated_total Total per-epoch challenge signing keys derived (k_epoch regenerations).
+# TYPE cs_appsec_challenge_kepoch_generated_total counter
+cs_appsec_challenge_kepoch_generated_total 1288
+# HELP cs_appsec_challenge_rejected_total Total challenge/cookie rejections, by kind (protocol=crypto/PoW failure, submission=RejectSubmission, cookie=invalid incoming cookie) and reason.
+# TYPE cs_appsec_challenge_rejected_total counter
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 120",source="127.0.0.1"} 10
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 130",source="127.0.0.1"} 7
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 150",source="127.0.0.1"} 15
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 165",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 185",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 195",source="127.0.0.1"} 2
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 210",source="127.0.0.1"} 4
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 215",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 230",source="127.0.0.1"} 2
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 235",source="127.0.0.1"} 4
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 250",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 255",source="127.0.0.1"} 3
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 260",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 300",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 305",source="127.0.0.1"} 4
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 335",source="127.0.0.1"} 2
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 500",source="127.0.0.1"} 1
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 555",source="127.0.0.1"} 2
+cs_appsec_challenge_rejected_total{appsec_engine="127.0.0.1:7422/",kind="submission",reason="request score 585",source="127.0.0.1"} 1
+# HELP cs_appsec_challenge_reobfuscation_total Total JS obfuscation passes run by the challenge runtime, by bundle (dynamic=per-epoch sign-key module).
+# TYPE cs_appsec_challenge_reobfuscation_total counter
+cs_appsec_challenge_reobfuscation_total{bundle="dynamic"} 1287
+# HELP cs_appsec_challenge_requested_total Total challenges served by the Application Security Engine.
+# TYPE cs_appsec_challenge_requested_total counter
+cs_appsec_challenge_requested_total{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 6952
+# HELP cs_appsec_challenge_submitted_total Total challenge responses received by the Application Security Engine.
+# TYPE cs_appsec_challenge_submitted_total counter
+cs_appsec_challenge_submitted_total{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 100
+# HELP cs_appsec_fingerprint_mismatch_total Count of fingerprint mismatch signals fired per reason and severity.
+# TYPE cs_appsec_fingerprint_mismatch_total counter
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="accept_language",severity="medium"} 24
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="bot_user_agent",severity="high"} 4
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="cdp",severity="high"} 62
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="headless_screen_resolution",severity="high"} 6
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="high_cpu_count",severity="high"} 22
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="inconsistent_etsl",severity="high"} 12
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="mismatch_platform_worker",severity="high"} 12
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="mismatch_webgl_worker",severity="high"} 7
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="missing_chrome_object",severity="high"} 5
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="platform_mismatch",severity="high"} 22
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="playwright",severity="high"} 6
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="swiftshader_renderer",severity="low"} 44
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="timezone_country",severity="low"} 6
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="ua_mobile",severity="medium"} 7
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="utc_timezone",severity="medium"} 13
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="webdriver",severity="high"} 4
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="webdriver_iframe",severity="high"} 4
+cs_appsec_fingerprint_mismatch_total{appsec_engine="127.0.0.1:7422/",reason="webdriver_writable",severity="high"} 10
+# HELP cs_appsec_inband_parsing_time_seconds Time spent processing a request by the inband Application Security Engine.
+# TYPE cs_appsec_inband_parsing_time_seconds histogram
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0001"} 250
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.00025"} 253
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0005"} 294
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.001"} 2067
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0025"} 8750
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.005"} 10594
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.01"} 10957
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.025"} 11085
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.05"} 11195
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.1"} 11300
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.25"} 11626
+cs_appsec_inband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="+Inf"} 12533
+cs_appsec_inband_parsing_time_seconds_sum{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 946.5269378650014
+cs_appsec_inband_parsing_time_seconds_count{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 12533
+# HELP cs_appsec_outband_parsing_time_seconds Time spent processing a request by the Application Security Engine.
+# TYPE cs_appsec_outband_parsing_time_seconds histogram
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0001"} 4336
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.00025"} 4950
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0005"} 5105
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.001"} 5163
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0025"} 5207
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.005"} 5220
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.01"} 5225
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.025"} 5225
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.05"} 5226
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.1"} 5227
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.25"} 5227
+cs_appsec_outband_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="+Inf"} 5227
+cs_appsec_outband_parsing_time_seconds_sum{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 0.692683409000002
+cs_appsec_outband_parsing_time_seconds_count{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 5227
+# HELP cs_appsec_parsing_time_seconds Time spent processing a request by the Application Security Engine.
+# TYPE cs_appsec_parsing_time_seconds histogram
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0001"} 247
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.00025"} 253
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0005"} 255
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.001"} 1738
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.0025"} 8496
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.005"} 10499
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.01"} 10913
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.025"} 11070
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.05"} 11185
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.1"} 11296
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="0.25"} 11624
+cs_appsec_parsing_time_seconds_bucket{appsec_engine="127.0.0.1:7422/",source="127.0.0.1",le="+Inf"} 12533
+cs_appsec_parsing_time_seconds_sum{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 950.6026122990008
+cs_appsec_parsing_time_seconds_count{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 12533
+# HELP cs_appsec_reqs_total Total events processed by the Application Security Engine.
+# TYPE cs_appsec_reqs_total counter
+cs_appsec_reqs_total{appsec_engine="127.0.0.1:7422/",source="127.0.0.1"} 12533
+# HELP cs_appsec_rule_hits Count of triggered rule, by rule_name, type (inband/outofband), appsec_engine and source
+# TYPE cs_appsec_rule_hits counter
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/experimental-no-user-agent",source="127.0.0.1",type="outofband"} 22
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/generic-wordpress-uploads-listing",source="127.0.0.1",type="inband"} 10
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/generic-wordpress-uploads-php",source="127.0.0.1",type="inband"} 9
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-CVE-2017-9841",source="127.0.0.1",type="inband"} 2
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-CVE-2025-29927",source="127.0.0.1",type="inband"} 132
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-CVE-2025-55182",source="127.0.0.1",type="inband"} 5
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-CVE-2026-63030",source="127.0.0.1",type="inband"} 4
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-env-access",source="127.0.0.1",type="inband"} 14
+cs_appsec_rule_hits{appsec_engine="127.0.0.1:7422/",rule_name="crowdsecurity/vpatch-git-config",source="127.0.0.1",type="inband"} 23
+# HELP cs_bucket_instantiation_total Total buckets were instantiated.
+# TYPE cs_bucket_instantiation_total counter
+cs_bucket_instantiation_total{name="LePresidente/http-generic-401-bf"} 3
+cs_bucket_instantiation_total{name="LePresidente/http-generic-403-bf"} 10
+cs_bucket_instantiation_total{name="crowdsecurity/CVE-2017-9841"} 7
+cs_bucket_instantiation_total{name="crowdsecurity/CVE-2019-18935"} 2
+cs_bucket_instantiation_total{name="crowdsecurity/appsec-bot-challenge-too-many-requests"} 3524
+cs_bucket_instantiation_total{name="crowdsecurity/appsec-bot-challenge-too-many-submissions"} 96
+cs_bucket_instantiation_total{name="crowdsecurity/appsec-vpatch"} 36
+cs_bucket_instantiation_total{name="crowdsecurity/http-admin-interface-probing"} 31
+cs_bucket_instantiation_total{name="crowdsecurity/http-backdoors-attempts"} 68
+cs_bucket_instantiation_total{name="crowdsecurity/http-bad-user-agent"} 160
+cs_bucket_instantiation_total{name="crowdsecurity/http-crawl-non_statics"} 7896
+cs_bucket_instantiation_total{name="crowdsecurity/http-cve-2021-41773"} 13
+cs_bucket_instantiation_total{name="crowdsecurity/http-cve-2021-42013"} 12
+cs_bucket_instantiation_total{name="crowdsecurity/http-cve-probing"} 16
+cs_bucket_instantiation_total{name="crowdsecurity/http-generic-test"} 2
+cs_bucket_instantiation_total{name="crowdsecurity/http-open-proxy"} 11
+cs_bucket_instantiation_total{name="crowdsecurity/http-path-traversal-probing"} 6
+cs_bucket_instantiation_total{name="crowdsecurity/http-probing"} 1397
+cs_bucket_instantiation_total{name="crowdsecurity/http-sensitive-files"} 234
+cs_bucket_instantiation_total{name="crowdsecurity/http-technology-probing"} 4
+cs_bucket_instantiation_total{name="crowdsecurity/http-wordpress-scan"} 32
+cs_bucket_instantiation_total{name="crowdsecurity/jira_cve-2021-26086"} 7
+cs_bucket_instantiation_total{name="crowdsecurity/netgear_rce"} 1
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-bf"} 3
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-bf_user-enum"} 3
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-slow-bf"} 3
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-slow-bf_user-enum"} 3
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-time-based-bf"} 1
+cs_bucket_instantiation_total{name="crowdsecurity/ssh-time-based-bf_user-enum"} 1
+# HELP cs_bucket_overflowed_total Total buckets overflowed.
+# TYPE cs_bucket_overflowed_total counter
+cs_bucket_overflowed_total{name="crowdsecurity/CVE-2017-9841"} 7
+cs_bucket_overflowed_total{name="crowdsecurity/CVE-2019-18935"} 2
+cs_bucket_overflowed_total{name="crowdsecurity/appsec-bot-challenge-too-many-requests"} 224
+cs_bucket_overflowed_total{name="crowdsecurity/appsec-vpatch"} 7
+cs_bucket_overflowed_total{name="crowdsecurity/http-admin-interface-probing"} 12
+cs_bucket_overflowed_total{name="crowdsecurity/http-backdoors-attempts"} 16
+cs_bucket_overflowed_total{name="crowdsecurity/http-bad-user-agent"} 93
+cs_bucket_overflowed_total{name="crowdsecurity/http-crawl-non_statics"} 19
+cs_bucket_overflowed_total{name="crowdsecurity/http-cve-2021-41773"} 13
+cs_bucket_overflowed_total{name="crowdsecurity/http-cve-2021-42013"} 12
+cs_bucket_overflowed_total{name="crowdsecurity/http-cve-probing"} 16
+cs_bucket_overflowed_total{name="crowdsecurity/http-generic-test"} 2
+cs_bucket_overflowed_total{name="crowdsecurity/http-open-proxy"} 11
+cs_bucket_overflowed_total{name="crowdsecurity/http-path-traversal-probing"} 4
+cs_bucket_overflowed_total{name="crowdsecurity/http-probing"} 89
+cs_bucket_overflowed_total{name="crowdsecurity/http-sensitive-files"} 96
+cs_bucket_overflowed_total{name="crowdsecurity/http-technology-probing"} 4
+cs_bucket_overflowed_total{name="crowdsecurity/http-wordpress-scan"} 9
+cs_bucket_overflowed_total{name="crowdsecurity/jira_cve-2021-26086"} 7
+cs_bucket_overflowed_total{name="crowdsecurity/netgear_rce"} 1
+cs_bucket_overflowed_total{name="crowdsecurity/ssh-time-based-bf"} 1
+# HELP cs_bucket_pour_seconds Time spent pouring an event to buckets.
+# TYPE cs_bucket_pour_seconds histogram
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.001"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.002"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.005"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.01"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.015"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.02"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.03"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.04"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="0.05"} 51
+cs_bucket_pour_seconds_bucket{source="",type="",le="+Inf"} 51
+cs_bucket_pour_seconds_sum{source="",type=""} 0.008657412000000001
+cs_bucket_pour_seconds_count{source="",type=""} 51
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.001"} 12305
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.002"} 15144
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.005"} 20672
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.01"} 22917
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.015"} 23202
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.02"} 23461
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.03"} 23750
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.04"} 23776
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.05"} 23798
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="+Inf"} 23845
+cs_bucket_pour_seconds_sum{source="/var/log/nginx/access.log",type="file"} 70.01157041899961
+cs_bucket_pour_seconds_count{source="/var/log/nginx/access.log",type="file"} 23845
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.001"} 1521
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.002"} 1958
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.005"} 2268
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.01"} 2392
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.015"} 2662
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.02"} 2861
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.03"} 3122
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.04"} 3138
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.05"} 3153
+cs_bucket_pour_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="+Inf"} 3175
+cs_bucket_pour_seconds_sum{source="/var/log/nginx/error.log",type="file"} 20.430053954999995
+cs_bucket_pour_seconds_count{source="/var/log/nginx/error.log",type="file"} 3175
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.001"} 6930
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.002"} 7091
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.005"} 7291
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.01"} 7315
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.015"} 7323
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.02"} 7345
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.03"} 7361
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.04"} 7362
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="0.05"} 7362
+cs_bucket_pour_seconds_bucket{source="appsec",type="appsec",le="+Inf"} 7372
+cs_bucket_pour_seconds_sum{source="appsec",type="appsec"} 5.324105111999989
+cs_bucket_pour_seconds_count{source="appsec",type="appsec"} 7372
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.001"} 3
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.002"} 3
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.005"} 3
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.01"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.015"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.02"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.03"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.04"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.05"} 4
+cs_bucket_pour_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="+Inf"} 4
+cs_bucket_pour_seconds_sum{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 0.0075723859999999995
+cs_bucket_pour_seconds_count{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 4
+# HELP cs_bucket_poured_total Total events were poured in bucket.
+# TYPE cs_bucket_poured_total counter
+cs_bucket_poured_total{name="LePresidente/http-generic-401-bf",source="/var/log/nginx/access.log",type="file"} 3
+cs_bucket_poured_total{name="LePresidente/http-generic-403-bf",source="/var/log/nginx/access.log",type="file"} 17
+cs_bucket_poured_total{name="crowdsecurity/appsec-bot-challenge-too-many-requests",source="appsec",type="appsec"} 6951
+cs_bucket_poured_total{name="crowdsecurity/appsec-bot-challenge-too-many-submissions",source="appsec",type="appsec"} 100
+cs_bucket_poured_total{name="crowdsecurity/appsec-vpatch",source="appsec",type="appsec"} 43
+cs_bucket_poured_total{name="crowdsecurity/http-admin-interface-probing",source="/var/log/nginx/access.log",type="file"} 62
+cs_bucket_poured_total{name="crowdsecurity/http-backdoors-attempts",source="/var/log/nginx/access.log",type="file"} 82
+cs_bucket_poured_total{name="crowdsecurity/http-backdoors-attempts",source="/var/log/nginx/error.log",type="file"} 2
+cs_bucket_poured_total{name="crowdsecurity/http-bad-user-agent",source="/var/log/nginx/access.log",type="file"} 253
+cs_bucket_poured_total{name="crowdsecurity/http-crawl-non_statics",source="/var/log/nginx/access.log",type="file"} 12187
+cs_bucket_poured_total{name="crowdsecurity/http-crawl-non_statics",source="/var/log/nginx/error.log",type="file"} 1096
+cs_bucket_poured_total{name="crowdsecurity/http-path-traversal-probing",source="/var/log/nginx/access.log",type="file"} 18
+cs_bucket_poured_total{name="crowdsecurity/http-probing",source="/var/log/nginx/access.log",type="file"} 2987
+cs_bucket_poured_total{name="crowdsecurity/http-sensitive-files",source="/var/log/nginx/access.log",type="file"} 644
+cs_bucket_poured_total{name="crowdsecurity/http-sensitive-files",source="/var/log/nginx/error.log",type="file"} 49
+cs_bucket_poured_total{name="crowdsecurity/http-wordpress-scan",source="/var/log/nginx/access.log",type="file"} 75
+cs_bucket_poured_total{name="crowdsecurity/ssh-bf",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 4
+cs_bucket_poured_total{name="crowdsecurity/ssh-bf_user-enum",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 3
+cs_bucket_poured_total{name="crowdsecurity/ssh-slow-bf",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 4
+cs_bucket_poured_total{name="crowdsecurity/ssh-slow-bf_user-enum",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 3
+cs_bucket_poured_total{name="crowdsecurity/ssh-time-based-bf",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 4
+cs_bucket_poured_total{name="crowdsecurity/ssh-time-based-bf_user-enum",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 2
+# HELP cs_bucket_underflowed_total Total buckets underflowed.
+# TYPE cs_bucket_underflowed_total counter
+cs_bucket_underflowed_total{name="LePresidente/http-generic-401-bf"} 3
+cs_bucket_underflowed_total{name="LePresidente/http-generic-403-bf"} 10
+cs_bucket_underflowed_total{name="crowdsecurity/appsec-bot-challenge-too-many-requests"} 3284
+cs_bucket_underflowed_total{name="crowdsecurity/appsec-bot-challenge-too-many-submissions"} 96
+cs_bucket_underflowed_total{name="crowdsecurity/appsec-vpatch"} 29
+cs_bucket_underflowed_total{name="crowdsecurity/http-admin-interface-probing"} 19
+cs_bucket_underflowed_total{name="crowdsecurity/http-backdoors-attempts"} 52
+cs_bucket_underflowed_total{name="crowdsecurity/http-bad-user-agent"} 66
+cs_bucket_underflowed_total{name="crowdsecurity/http-crawl-non_statics"} 7873
+cs_bucket_underflowed_total{name="crowdsecurity/http-path-traversal-probing"} 2
+cs_bucket_underflowed_total{name="crowdsecurity/http-probing"} 1306
+cs_bucket_underflowed_total{name="crowdsecurity/http-sensitive-files"} 138
+cs_bucket_underflowed_total{name="crowdsecurity/http-wordpress-scan"} 23
+cs_bucket_underflowed_total{name="crowdsecurity/ssh-bf"} 3
+cs_bucket_underflowed_total{name="crowdsecurity/ssh-bf_user-enum"} 3
+cs_bucket_underflowed_total{name="crowdsecurity/ssh-slow-bf"} 3
+cs_bucket_underflowed_total{name="crowdsecurity/ssh-slow-bf_user-enum"} 3
+# HELP cs_buckets Number of buckets that currently exist.
+# TYPE cs_buckets gauge
+cs_buckets{name="LePresidente/http-generic-401-bf"} 0
+cs_buckets{name="LePresidente/http-generic-403-bf"} 0
+cs_buckets{name="crowdsecurity/CVE-2017-9841"} 0
+cs_buckets{name="crowdsecurity/CVE-2019-18935"} 0
+cs_buckets{name="crowdsecurity/appsec-bot-challenge-too-many-requests"} 9
+cs_buckets{name="crowdsecurity/appsec-bot-challenge-too-many-submissions"} 0
+cs_buckets{name="crowdsecurity/appsec-vpatch"} 0
+cs_buckets{name="crowdsecurity/http-admin-interface-probing"} 0
+cs_buckets{name="crowdsecurity/http-backdoors-attempts"} 0
+cs_buckets{name="crowdsecurity/http-bad-user-agent"} 1
+cs_buckets{name="crowdsecurity/http-crawl-non_statics"} 3
+cs_buckets{name="crowdsecurity/http-cve-2021-41773"} 0
+cs_buckets{name="crowdsecurity/http-cve-2021-42013"} 0
+cs_buckets{name="crowdsecurity/http-cve-probing"} 0
+cs_buckets{name="crowdsecurity/http-generic-test"} 0
+cs_buckets{name="crowdsecurity/http-open-proxy"} 0
+cs_buckets{name="crowdsecurity/http-path-traversal-probing"} 0
+cs_buckets{name="crowdsecurity/http-probing"} 2
+cs_buckets{name="crowdsecurity/http-sensitive-files"} 0
+cs_buckets{name="crowdsecurity/http-technology-probing"} 0
+cs_buckets{name="crowdsecurity/http-wordpress-scan"} 0
+cs_buckets{name="crowdsecurity/jira_cve-2021-26086"} 0
+cs_buckets{name="crowdsecurity/netgear_rce"} 0
+cs_buckets{name="crowdsecurity/ssh-bf"} 0
+cs_buckets{name="crowdsecurity/ssh-bf_user-enum"} 0
+cs_buckets{name="crowdsecurity/ssh-slow-bf"} 0
+cs_buckets{name="crowdsecurity/ssh-slow-bf_user-enum"} 0
+cs_buckets{name="crowdsecurity/ssh-time-based-bf"} 0
+cs_buckets{name="crowdsecurity/ssh-time-based-bf_user-enum"} 1
+# HELP cs_filesource_hits_total Total lines that were read.
+# TYPE cs_filesource_hits_total counter
+cs_filesource_hits_total{acquis_type="nginx",datasource_type="file",source="/var/log/nginx/access.log"} 23922
+cs_filesource_hits_total{acquis_type="nginx",datasource_type="file",source="/var/log/nginx/error.log"} 3237
+# HELP cs_info Information about Crowdsec.
+# TYPE cs_info gauge
+cs_info{version="v1.8.1-debian-pragmatic-amd64-909b5157"} 0
+# HELP cs_journalctlsource_hits_total Total lines that were read.
+# TYPE cs_journalctlsource_hits_total counter
+cs_journalctlsource_hits_total{acquis_type="syslog",datasource_type="journalctl",source="journalctl-_SYSTEMD_UNIT=ssh.service"} 19
+# HELP cs_lapi_bouncer_requests_total Number of calls to each route per method grouped by bouncers.
+# TYPE cs_lapi_bouncer_requests_total counter
+cs_lapi_bouncer_requests_total{bouncer="crowdsec-nginx-bouncer-1791120170",method="GET",route="/v1/decisions/stream"} 38303
+cs_lapi_bouncer_requests_total{bouncer="crowdsec-nginx-bouncer-1791120170",method="HEAD",route="/v1/decisions/stream"} 2901
+cs_lapi_bouncer_requests_total{bouncer="cs-firewall-bouncer-1790848478",method="GET",route="/v1/decisions/stream"} 65531
+cs_lapi_bouncer_requests_total{bouncer="smoketest-20261005",method="HEAD",route="/v1/decisions/stream"} 1
+# HELP cs_lapi_machine_requests_total Number of calls to each route per method grouped by machines.
+# TYPE cs_lapi_machine_requests_total counter
+cs_lapi_machine_requests_total{machine="example-machine",method="DELETE",route="/v1/decisions"} 3
+cs_lapi_machine_requests_total{machine="example-machine",method="GET",route="/v1/alerts"} 7
+cs_lapi_machine_requests_total{machine="example-machine",method="GET",route="/v1/allowlists"} 6404
+cs_lapi_machine_requests_total{machine="example-machine",method="GET",route="/v1/allowlists/:allowlist_name"} 1
+cs_lapi_machine_requests_total{machine="example-machine",method="GET",route="/v1/allowlists/check/:ip_or_range"} 1
+cs_lapi_machine_requests_total{machine="example-machine",method="GET",route="/v1/heartbeat"} 10916
+cs_lapi_machine_requests_total{machine="example-machine",method="POST",route="/v1/alerts"} 401
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="DELETE",route="/v1/alerts/:alert_id"} 1
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="DELETE",route="/v1/decisions/:decision_id"} 2
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="GET",route="/v1/alerts"} 21
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="GET",route="/v1/alerts/:alert_id"} 2
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="GET",route="/v1/allowlists/check/:ip_or_range"} 4
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="POST",route="/v1/alerts"} 2
+cs_lapi_machine_requests_total{machine="emdash-crowdsec",method="POST",route="/v1/allowlists/check"} 2
+# HELP cs_lapi_request_duration_seconds Response time of LAPI
+# TYPE cs_lapi_request_duration_seconds histogram
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.005"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.01"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.025"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.05"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.075"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.1"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.2"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.3"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.4"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.5"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="0.75"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="1"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="",method="GET",le="+Inf"} 3
+cs_lapi_request_duration_seconds_sum{endpoint="",method="GET"} 9.530099999999999e-05
+cs_lapi_request_duration_seconds_count{endpoint="",method="GET"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.005"} 7
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.01"} 11
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.025"} 13
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.05"} 13
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.075"} 14
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.1"} 15
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.2"} 16
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.3"} 17
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.4"} 21
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.5"} 25
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="0.75"} 29
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="1"} 30
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="GET",le="+Inf"} 31
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts",method="GET"} 8.685101804999999
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts",method="GET"} 31
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.005"} 145
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.01"} 292
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.025"} 380
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.05"} 387
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.075"} 392
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.1"} 394
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.2"} 399
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.3"} 402
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.4"} 403
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.5"} 403
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="0.75"} 403
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="1"} 403
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts",method="POST",le="+Inf"} 403
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts",method="POST"} 5.421338948999998
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts",method="POST"} 403
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.005"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.01"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.025"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.05"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.075"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.2"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.3"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.4"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.5"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="0.75"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="DELETE",le="+Inf"} 1
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts/:alert_id",method="DELETE"} 0.02801244
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts/:alert_id",method="DELETE"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.005"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.01"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.025"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.05"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.2"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.3"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.4"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.5"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="0.75"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/alerts/:alert_id",method="GET",le="+Inf"} 2
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/alerts/:alert_id",method="GET"} 0.005144350000000001
+cs_lapi_request_duration_seconds_count{endpoint="/v1/alerts/:alert_id",method="GET"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.005"} 6365
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.01"} 6388
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.025"} 6399
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.05"} 6402
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.075"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.1"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.2"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.3"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.4"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.5"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="0.75"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="1"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists",method="GET",le="+Inf"} 6404
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/allowlists",method="GET"} 2.639531268000003
+cs_lapi_request_duration_seconds_count{endpoint="/v1/allowlists",method="GET"} 6404
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.005"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.01"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.025"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.05"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.075"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.2"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.3"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.4"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.5"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="0.75"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="1"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/:allowlist_name",method="GET",le="+Inf"} 1
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/allowlists/:allowlist_name",method="GET"} 0.003217346
+cs_lapi_request_duration_seconds_count{endpoint="/v1/allowlists/:allowlist_name",method="GET"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.005"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.01"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.025"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.05"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.2"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.3"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.4"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.5"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="0.75"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check",method="POST",le="+Inf"} 2
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/allowlists/check",method="POST"} 0.010029897
+cs_lapi_request_duration_seconds_count{endpoint="/v1/allowlists/check",method="POST"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.005"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.01"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.025"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.05"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.075"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.1"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.2"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.3"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.4"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.5"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="0.75"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="1"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/allowlists/check/:ip_or_range",method="GET",le="+Inf"} 5
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/allowlists/check/:ip_or_range",method="GET"} 0.005230565
+cs_lapi_request_duration_seconds_count{endpoint="/v1/allowlists/check/:ip_or_range",method="GET"} 5
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.005"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.01"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.025"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.05"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.2"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.3"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.4"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.5"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="0.75"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="1"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions",method="DELETE",le="+Inf"} 3
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/decisions",method="DELETE"} 0.13633895
+cs_lapi_request_duration_seconds_count{endpoint="/v1/decisions",method="DELETE"} 3
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.005"} 1
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.01"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.025"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.05"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.075"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.2"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.3"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.4"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.5"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="0.75"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="1"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/:decision_id",method="DELETE",le="+Inf"} 2
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/decisions/:decision_id",method="DELETE"} 0.008312057000000001
+cs_lapi_request_duration_seconds_count{endpoint="/v1/decisions/:decision_id",method="DELETE"} 2
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.005"} 100839
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.01"} 102596
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.025"} 103166
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.05"} 103407
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.075"} 103501
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.1"} 103562
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.2"} 103736
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.3"} 103778
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.4"} 103800
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.5"} 103807
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="0.75"} 103822
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="1"} 103826
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="GET",le="+Inf"} 103834
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/decisions/stream",method="GET"} 280.4656485680019
+cs_lapi_request_duration_seconds_count{endpoint="/v1/decisions/stream",method="GET"} 103834
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.005"} 2889
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.01"} 2897
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.025"} 2899
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.05"} 2900
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.075"} 2901
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.1"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.2"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.3"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.4"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.5"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="0.75"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="1"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/decisions/stream",method="HEAD",le="+Inf"} 2902
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/decisions/stream",method="HEAD"} 1.525905896000001
+cs_lapi_request_duration_seconds_count{endpoint="/v1/decisions/stream",method="HEAD"} 2902
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.005"} 10569
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.01"} 10729
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.025"} 10802
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.05"} 10866
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.075"} 10886
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.1"} 10893
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.2"} 10904
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.3"} 10910
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.4"} 10913
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.5"} 10914
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="0.75"} 10915
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="1"} 10915
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/heartbeat",method="GET",le="+Inf"} 10916
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/heartbeat",method="GET"} 20.921471671999967
+cs_lapi_request_duration_seconds_count{endpoint="/v1/heartbeat",method="GET"} 10916
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.005"} 1389
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.01"} 1475
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.025"} 1502
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.05"} 1511
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.075"} 1513
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.1"} 1513
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.2"} 1518
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.3"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.4"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.5"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="0.75"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="1"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/usage-metrics",method="POST",le="+Inf"} 1520
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/usage-metrics",method="POST"} 5.069007935000003
+cs_lapi_request_duration_seconds_count{endpoint="/v1/usage-metrics",method="POST"} 1520
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.005"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.01"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.025"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.05"} 0
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.075"} 158
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.1"} 185
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.2"} 203
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.3"} 224
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.4"} 225
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.5"} 228
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="0.75"} 229
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="1"} 229
+cs_lapi_request_duration_seconds_bucket{endpoint="/v1/watchers/login",method="POST",le="+Inf"} 232
+cs_lapi_request_duration_seconds_sum{endpoint="/v1/watchers/login",method="POST"} 27.076520324000022
+cs_lapi_request_duration_seconds_count{endpoint="/v1/watchers/login",method="POST"} 232
+# HELP cs_lapi_route_requests_total Number of calls to each route per method.
+# TYPE cs_lapi_route_requests_total counter
+cs_lapi_route_requests_total{method="DELETE",route="/v1/alerts/:alert_id"} 1
+cs_lapi_route_requests_total{method="DELETE",route="/v1/decisions"} 3
+cs_lapi_route_requests_total{method="DELETE",route="/v1/decisions/:decision_id"} 2
+cs_lapi_route_requests_total{method="GET",route="/v1/alerts"} 31
+cs_lapi_route_requests_total{method="GET",route="/v1/alerts/:alert_id"} 2
+cs_lapi_route_requests_total{method="GET",route="/v1/allowlists"} 6404
+cs_lapi_route_requests_total{method="GET",route="/v1/allowlists/:allowlist_name"} 1
+cs_lapi_route_requests_total{method="GET",route="/v1/allowlists/check/:ip_or_range"} 5
+cs_lapi_route_requests_total{method="GET",route="/v1/decisions/stream"} 103834
+cs_lapi_route_requests_total{method="GET",route="/v1/heartbeat"} 10916
+cs_lapi_route_requests_total{method="GET",route="invalid-endpoint"} 3
+cs_lapi_route_requests_total{method="HEAD",route="/v1/decisions/stream"} 2902
+cs_lapi_route_requests_total{method="POST",route="/v1/alerts"} 403
+cs_lapi_route_requests_total{method="POST",route="/v1/allowlists/check"} 2
+cs_lapi_route_requests_total{method="POST",route="/v1/usage-metrics"} 1520
+cs_lapi_route_requests_total{method="POST",route="/v1/watchers/login"} 232
+# HELP cs_machines_last_heartbeat_timestamp Unix timestamp of a machine's last heartbeat.
+# TYPE cs_machines_last_heartbeat_timestamp gauge
+cs_machines_last_heartbeat_timestamp{machine="example-machine"} 1.7915037227175372e+09
+# HELP cs_node_hits_ko_total Total events unsuccessfully exited node.
+# TYPE cs_node_hits_ko_total counter
+cs_node_hits_ko_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23524
+cs_node_hits_ko_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3096
+cs_node_hits_ko_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/access.log",stage="s01-parse",type="file"} 2350
+cs_node_hits_ko_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s01-parse",type="file"} 3472
+cs_node_hits_ko_total{acquis_type="nginx",name="crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 960
+cs_node_hits_ko_total{acquis_type="nginx",name="crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s01-parse",type="file"} 47
+cs_node_hits_ko_total{acquis_type="syslog",name="child-crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 248
+cs_node_hits_ko_total{acquis_type="syslog",name="child-crowdsecurity/sshd-success-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 1
+cs_node_hits_ko_total{acquis_type="syslog",name="crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 15
+cs_node_hits_ko_total{acquis_type="syslog",name="crowdsecurity/sshd-success-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 1
+# HELP cs_node_hits_ok_total Total events successfully exited node.
+# TYPE cs_node_hits_ok_total counter
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/appsec-bot-detection-logs",source="appsec",stage="s01-parse",type="appsec"} 7152
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/appsec-logs",source="appsec",stage="s01-parse",type="appsec"} 221
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/geoip-enrich",source="appsec",stage="s02-enrich",type="appsec"} 7372
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/non-syslog",source="appsec",stage="s00-raw",type="appsec"} 7373
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/public-dns-allowlist",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_hits_ok_total{acquis_type="appsec",name="crowdsecurity/whitelists",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_hits_ok_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 48242
+cs_node_hits_ok_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 6474
+cs_node_hits_ok_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/access.log",stage="s01-parse",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s01-parse",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/dateparse-enrich",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/dateparse-enrich",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/geoip-enrich",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23845
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/geoip-enrich",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3175
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 22962
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/http-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/nginx-logs",source="/var/log/nginx/access.log",stage="s01-parse",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/non-syslog",source="/var/log/nginx/access.log",stage="s00-raw",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/non-syslog",source="/var/log/nginx/error.log",stage="s00-raw",type="file"} 3237
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/whitelists",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_ok_total{acquis_type="nginx",name="crowdsecurity/whitelists",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_ok_total{acquis_type="syslog",name="child-crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="syslog",name="child-crowdsecurity/syslog-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s00-raw",type="journalctl"} 19
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/dateparse-enrich",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/geoip-enrich",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/public-dns-allowlist",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/syslog-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s00-raw",type="journalctl"} 19
+cs_node_hits_ok_total{acquis_type="syslog",name="crowdsecurity/whitelists",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_ok_total{acquis_type="unknown",name="crowdsecurity/cdn-whitelist",source="",stage="s01-whitelist",type=""} 654
+cs_node_hits_ok_total{acquis_type="unknown",name="crowdsecurity/google-special-crawlers-whitelist",source="",stage="s01-whitelist",type=""} 654
+cs_node_hits_ok_total{acquis_type="unknown",name="crowdsecurity/rdns",source="",stage="s00-enrich",type=""} 654
+cs_node_hits_ok_total{acquis_type="unknown",name="crowdsecurity/seo-bots-whitelist",source="",stage="s01-whitelist",type=""} 654
+# HELP cs_node_hits_total Total events entered node.
+# TYPE cs_node_hits_total counter
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/appsec-bot-detection-logs",source="appsec",stage="s01-parse",type="appsec"} 7152
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/appsec-logs",source="appsec",stage="s01-parse",type="appsec"} 221
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/geoip-enrich",source="appsec",stage="s02-enrich",type="appsec"} 7372
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/non-syslog",source="appsec",stage="s00-raw",type="appsec"} 7373
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/public-dns-allowlist",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_hits_total{acquis_type="appsec",name="crowdsecurity/whitelists",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_hits_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 71766
+cs_node_hits_total{acquis_type="nginx",name="child-crowdsecurity/http-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 9570
+cs_node_hits_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/access.log",stage="s01-parse",type="file"} 26272
+cs_node_hits_total{acquis_type="nginx",name="child-crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s01-parse",type="file"} 6662
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/dateparse-enrich",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/dateparse-enrich",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/geoip-enrich",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23845
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/geoip-enrich",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3175
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/http-logs",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/http-logs",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/nginx-logs",source="/var/log/nginx/access.log",stage="s01-parse",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/nginx-logs",source="/var/log/nginx/error.log",stage="s01-parse",type="file"} 3237
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/non-syslog",source="/var/log/nginx/access.log",stage="s00-raw",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/non-syslog",source="/var/log/nginx/error.log",stage="s00-raw",type="file"} 3237
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/whitelists",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_hits_total{acquis_type="nginx",name="crowdsecurity/whitelists",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_hits_total{acquis_type="syslog",name="child-crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 252
+cs_node_hits_total{acquis_type="syslog",name="child-crowdsecurity/sshd-success-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 1
+cs_node_hits_total{acquis_type="syslog",name="child-crowdsecurity/syslog-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s00-raw",type="journalctl"} 19
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/dateparse-enrich",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/geoip-enrich",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/public-dns-allowlist",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/sshd-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 19
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/sshd-success-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s01-parse",type="journalctl"} 1
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/syslog-logs",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s00-raw",type="journalctl"} 19
+cs_node_hits_total{acquis_type="syslog",name="crowdsecurity/whitelists",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_hits_total{acquis_type="unknown",name="crowdsecurity/cdn-whitelist",source="",stage="s01-whitelist",type=""} 654
+cs_node_hits_total{acquis_type="unknown",name="crowdsecurity/google-special-crawlers-whitelist",source="",stage="s01-whitelist",type=""} 654
+cs_node_hits_total{acquis_type="unknown",name="crowdsecurity/rdns",source="",stage="s00-enrich",type=""} 654
+cs_node_hits_total{acquis_type="unknown",name="crowdsecurity/seo-bots-whitelist",source="",stage="s01-whitelist",type=""} 654
+# HELP cs_node_wl_hits_ok_total Total events successfully whitelisted by node.
+# TYPE cs_node_wl_hits_ok_total counter
+cs_node_wl_hits_ok_total{acquis_type="appsec",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="appsec",stage="s02-enrich",type="appsec"} 1
+cs_node_wl_hits_ok_total{acquis_type="nginx",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 77
+cs_node_wl_hits_ok_total{acquis_type="nginx",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 15
+cs_node_wl_hits_ok_total{acquis_type="unknown",name="crowdsecurity/seo-bots-whitelist",reason="good bots (search engine crawlers)",source="",stage="s01-whitelist",type=""} 64
+# HELP cs_node_wl_hits_total Total events processed by whitelist node.
+# TYPE cs_node_wl_hits_total counter
+cs_node_wl_hits_total{acquis_type="appsec",name="crowdsecurity/public-dns-allowlist",reason="public DNS server",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_wl_hits_total{acquis_type="appsec",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="appsec",stage="s02-enrich",type="appsec"} 7373
+cs_node_wl_hits_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",reason="public DNS server",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_wl_hits_total{acquis_type="nginx",name="crowdsecurity/public-dns-allowlist",reason="public DNS server",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_wl_hits_total{acquis_type="nginx",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="/var/log/nginx/access.log",stage="s02-enrich",type="file"} 23922
+cs_node_wl_hits_total{acquis_type="nginx",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="/var/log/nginx/error.log",stage="s02-enrich",type="file"} 3190
+cs_node_wl_hits_total{acquis_type="syslog",name="crowdsecurity/public-dns-allowlist",reason="public DNS server",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_wl_hits_total{acquis_type="syslog",name="crowdsecurity/whitelists",reason="private ipv4/ipv6 ip/ranges",source="journalctl-_SYSTEMD_UNIT=ssh.service",stage="s02-enrich",type="journalctl"} 4
+cs_node_wl_hits_total{acquis_type="unknown",name="crowdsecurity/cdn-whitelist",reason="CDN provider",source="",stage="s01-whitelist",type=""} 654
+cs_node_wl_hits_total{acquis_type="unknown",name="crowdsecurity/google-special-crawlers-whitelist",reason="Google special crawlers ip range",source="",stage="s01-whitelist",type=""} 654
+cs_node_wl_hits_total{acquis_type="unknown",name="crowdsecurity/seo-bots-whitelist",reason="good bots (search engine crawlers)",source="",stage="s01-whitelist",type=""} 654
+# HELP cs_papi_invalid_orders_received_total Number of invalid orders received by papi.
+# TYPE cs_papi_invalid_orders_received_total counter
+cs_papi_invalid_orders_received_total 0
+# HELP cs_papi_last_pull_timestamp Unix timestamp of the last successful PAPI pull.
+# TYPE cs_papi_last_pull_timestamp gauge
+cs_papi_last_pull_timestamp 0
+# HELP cs_papi_poll_errors_total Number of errors encountered while polling PAPI.
+# TYPE cs_papi_poll_errors_total counter
+cs_papi_poll_errors_total 0
+# HELP cs_parser_hits_ko_total Total events were unsuccessfully parsed.
+# TYPE cs_parser_hits_ko_total counter
+cs_parser_hits_ko_total{acquis_type="nginx",source="/var/log/nginx/error.log",type="file"} 47
+cs_parser_hits_ko_total{acquis_type="syslog",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 15
+# HELP cs_parser_hits_ok_total Total events were successfully parsed.
+# TYPE cs_parser_hits_ok_total counter
+cs_parser_hits_ok_total{acquis_type="appsec",source="appsec",type="appsec"} 7373
+cs_parser_hits_ok_total{acquis_type="nginx",source="/var/log/nginx/access.log",type="file"} 23922
+cs_parser_hits_ok_total{acquis_type="nginx",source="/var/log/nginx/error.log",type="file"} 3190
+cs_parser_hits_ok_total{acquis_type="syslog",source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 4
+# HELP cs_parser_hits_total Total events entered the parser.
+# TYPE cs_parser_hits_total counter
+cs_parser_hits_total{source="/var/log/nginx/access.log",type="file"} 23922
+cs_parser_hits_total{source="/var/log/nginx/error.log",type="file"} 3237
+cs_parser_hits_total{source="appsec",type="appsec"} 7373
+cs_parser_hits_total{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 19
+# HELP cs_parsing_time_seconds Time spent parsing a line
+# TYPE cs_parsing_time_seconds histogram
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.0005"} 8714
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.001"} 17855
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.0015"} 20244
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.002"} 21314
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.0025"} 21916
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.003"} 22282
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.004"} 22728
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.005"} 23018
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.0075"} 23351
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="0.01"} 23492
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/access.log",type="file",le="+Inf"} 23922
+cs_parsing_time_seconds_sum{source="/var/log/nginx/access.log",type="file"} 50.72452888500044
+cs_parsing_time_seconds_count{source="/var/log/nginx/access.log",type="file"} 23922
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.0005"} 1230
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.001"} 1886
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.0015"} 2245
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.002"} 2471
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.0025"} 2638
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.003"} 2746
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.004"} 2924
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.005"} 3019
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.0075"} 3098
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="0.01"} 3138
+cs_parsing_time_seconds_bucket{source="/var/log/nginx/error.log",type="file",le="+Inf"} 3237
+cs_parsing_time_seconds_sum{source="/var/log/nginx/error.log",type="file"} 9.508461442999993
+cs_parsing_time_seconds_count{source="/var/log/nginx/error.log",type="file"} 3237
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.0005"} 5998
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.001"} 6427
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.0015"} 6617
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.002"} 6783
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.0025"} 6899
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.003"} 7017
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.004"} 7151
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.005"} 7234
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.0075"} 7296
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="0.01"} 7329
+cs_parsing_time_seconds_bucket{source="appsec",type="appsec",le="+Inf"} 7373
+cs_parsing_time_seconds_sum{source="appsec",type="appsec"} 6.263374570000001
+cs_parsing_time_seconds_count{source="appsec",type="appsec"} 7373
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.0005"} 6
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.001"} 8
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.0015"} 9
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.002"} 10
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.0025"} 13
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.003"} 16
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.004"} 16
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.005"} 16
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.0075"} 16
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="0.01"} 18
+cs_parsing_time_seconds_bucket{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl",le="+Inf"} 19
+cs_parsing_time_seconds_sum{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 0.09138718399999997
+cs_parsing_time_seconds_count{source="journalctl-_SYSTEMD_UNIT=ssh.service",type="journalctl"} 19
+# HELP cs_regexp_cache_size Entries per regexp cache.
+# TYPE cs_regexp_cache_size gauge
+cs_regexp_cache_size{name="bad_user_agents.regex.txt"} 2
+cs_regexp_cache_size{name="thinkphp_cve_2018-20062.txt"} 1
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 3.9071e-05
+go_gc_duration_seconds{quantile="0.25"} 0.000647835
+go_gc_duration_seconds{quantile="0.5"} 0.00082742
+go_gc_duration_seconds{quantile="0.75"} 0.000942542
+go_gc_duration_seconds{quantile="1"} 0.071132409
+go_gc_duration_seconds_sum 10.062229055
+go_gc_duration_seconds_count 6494
+# HELP go_gc_gogc_percent Heap size target percentage configured by the user, otherwise 100. This value is set by the GOGC environment variable, and the runtime/debug.SetGCPercent function. Sourced from /gc/gogc:percent.
+# TYPE go_gc_gogc_percent gauge
+go_gc_gogc_percent 100
+# HELP go_gc_gomemlimit_bytes Go runtime memory limit configured by the user, otherwise math.MaxInt64. This value is set by the GOMEMLIMIT environment variable, and the runtime/debug.SetMemoryLimit function. Sourced from /gc/gomemlimit:bytes.
+# TYPE go_gc_gomemlimit_bytes gauge
+go_gc_gomemlimit_bytes 9.223372036854776e+18
+# HELP go_goroutines Number of goroutines that currently exist.
+# TYPE go_goroutines gauge
+go_goroutines 105
+# HELP go_info Information about the Go environment.
+# TYPE go_info gauge
+go_info{version="go1.26.3"} 1
+# HELP go_memstats_alloc_bytes Number of bytes allocated in heap and currently in use. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_alloc_bytes gauge
+go_memstats_alloc_bytes 1.44863384e+08
+# HELP go_memstats_alloc_bytes_total Total number of bytes allocated in heap until now, even if released already. Equals to /gc/heap/allocs:bytes.
+# TYPE go_memstats_alloc_bytes_total counter
+go_memstats_alloc_bytes_total 3.07362625104e+11
+# HELP go_memstats_buck_hash_sys_bytes Number of bytes used by the profiling bucket hash table. Equals to /memory/classes/profiling/buckets:bytes.
+# TYPE go_memstats_buck_hash_sys_bytes gauge
+go_memstats_buck_hash_sys_bytes 4.140746e+06
+# HELP go_memstats_frees_total Total number of heap objects frees. Equals to /gc/heap/frees:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_frees_total counter
+go_memstats_frees_total 7.57982413e+08
+# HELP go_memstats_gc_sys_bytes Number of bytes used for garbage collection system metadata. Equals to /memory/classes/metadata/other:bytes.
+# TYPE go_memstats_gc_sys_bytes gauge
+go_memstats_gc_sys_bytes 7.222128e+06
+# HELP go_memstats_heap_alloc_bytes Number of heap bytes allocated and currently in use, same as go_memstats_alloc_bytes. Equals to /memory/classes/heap/objects:bytes.
+# TYPE go_memstats_heap_alloc_bytes gauge
+go_memstats_heap_alloc_bytes 1.44863384e+08
+# HELP go_memstats_heap_idle_bytes Number of heap bytes waiting to be used. Equals to /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_idle_bytes gauge
+go_memstats_heap_idle_bytes 3.6794368e+08
+# HELP go_memstats_heap_inuse_bytes Number of heap bytes that are in use. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes
+# TYPE go_memstats_heap_inuse_bytes gauge
+go_memstats_heap_inuse_bytes 1.673216e+08
+# HELP go_memstats_heap_objects Number of currently allocated objects. Equals to /gc/heap/objects:objects.
+# TYPE go_memstats_heap_objects gauge
+go_memstats_heap_objects 689811
+# HELP go_memstats_heap_released_bytes Number of heap bytes released to OS. Equals to /memory/classes/heap/released:bytes.
+# TYPE go_memstats_heap_released_bytes gauge
+go_memstats_heap_released_bytes 2.72154624e+08
+# HELP go_memstats_heap_sys_bytes Number of heap bytes obtained from system. Equals to /memory/classes/heap/objects:bytes + /memory/classes/heap/unused:bytes + /memory/classes/heap/released:bytes + /memory/classes/heap/free:bytes.
+# TYPE go_memstats_heap_sys_bytes gauge
+go_memstats_heap_sys_bytes 5.3526528e+08
+# HELP go_memstats_last_gc_time_seconds Number of seconds since 1970 of last garbage collection.
+# TYPE go_memstats_last_gc_time_seconds gauge
+go_memstats_last_gc_time_seconds 1.791503765942868e+09
+# HELP go_memstats_mallocs_total Total number of heap objects allocated, both live and gc-ed. Semantically a counter version for go_memstats_heap_objects gauge. Equals to /gc/heap/allocs:objects + /gc/heap/tiny/allocs:objects.
+# TYPE go_memstats_mallocs_total counter
+go_memstats_mallocs_total 7.58672224e+08
+# HELP go_memstats_mcache_inuse_bytes Number of bytes in use by mcache structures. Equals to /memory/classes/metadata/mcache/inuse:bytes.
+# TYPE go_memstats_mcache_inuse_bytes gauge
+go_memstats_mcache_inuse_bytes 2296
+# HELP go_memstats_mcache_sys_bytes Number of bytes used for mcache structures obtained from system. Equals to /memory/classes/metadata/mcache/inuse:bytes + /memory/classes/metadata/mcache/free:bytes.
+# TYPE go_memstats_mcache_sys_bytes gauge
+go_memstats_mcache_sys_bytes 16072
+# HELP go_memstats_mspan_inuse_bytes Number of bytes in use by mspan structures. Equals to /memory/classes/metadata/mspan/inuse:bytes.
+# TYPE go_memstats_mspan_inuse_bytes gauge
+go_memstats_mspan_inuse_bytes 1.31648e+06
+# HELP go_memstats_mspan_sys_bytes Number of bytes used for mspan structures obtained from system. Equals to /memory/classes/metadata/mspan/inuse:bytes + /memory/classes/metadata/mspan/free:bytes.
+# TYPE go_memstats_mspan_sys_bytes gauge
+go_memstats_mspan_sys_bytes 2.856e+06
+# HELP go_memstats_next_gc_bytes Number of heap bytes when next garbage collection will take place. Equals to /gc/heap/goal:bytes.
+# TYPE go_memstats_next_gc_bytes gauge
+go_memstats_next_gc_bytes 2.44585402e+08
+# HELP go_memstats_other_sys_bytes Number of bytes used for other system allocations. Equals to /memory/classes/other:bytes.
+# TYPE go_memstats_other_sys_bytes gauge
+go_memstats_other_sys_bytes 1.074246e+06
+# HELP go_memstats_stack_inuse_bytes Number of bytes obtained from system for stack allocator in non-CGO environments. Equals to /memory/classes/heap/stacks:bytes.
+# TYPE go_memstats_stack_inuse_bytes gauge
+go_memstats_stack_inuse_bytes 1.605632e+06
+# HELP go_memstats_stack_sys_bytes Number of bytes obtained from system for stack allocator. Equals to /memory/classes/heap/stacks:bytes + /memory/classes/os-stacks:bytes.
+# TYPE go_memstats_stack_sys_bytes gauge
+go_memstats_stack_sys_bytes 1.605632e+06
+# HELP go_memstats_sys_bytes Number of bytes obtained from system. Equals to /memory/classes/total:byte.
+# TYPE go_memstats_sys_bytes gauge
+go_memstats_sys_bytes 5.52180104e+08
+# HELP go_sched_gomaxprocs_threads The current runtime.GOMAXPROCS setting, or the number of operating system threads that can execute user-level Go code simultaneously. Sourced from /sched/gomaxprocs:threads.
+# TYPE go_sched_gomaxprocs_threads gauge
+go_sched_gomaxprocs_threads 1
+# HELP go_threads Number of OS threads created.
+# TYPE go_threads gauge
+go_threads 12
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 7975.69
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 524287
+# HELP process_network_receive_bytes_total Number of bytes received by the process over the network.
+# TYPE process_network_receive_bytes_total counter
+process_network_receive_bytes_total 6.338379998e+09
+# HELP process_network_transmit_bytes_total Number of bytes sent by the process over the network.
+# TYPE process_network_transmit_bytes_total counter
+process_network_transmit_bytes_total 7.168802091e+09
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 56
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 3.02329856e+08
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.79084846384e+09
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 2.773069824e+09
+# HELP process_virtual_memory_max_bytes Maximum amount of virtual memory available in bytes.
+# TYPE process_virtual_memory_max_bytes gauge
+process_virtual_memory_max_bytes 1.8446744073709552e+19
+# HELP promhttp_metric_handler_requests_in_flight Current number of scrapes being served.
+# TYPE promhttp_metric_handler_requests_in_flight gauge
+promhttp_metric_handler_requests_in_flight 1
+# HELP promhttp_metric_handler_requests_total Total number of scrapes by HTTP status code.
+# TYPE promhttp_metric_handler_requests_total counter
+promhttp_metric_handler_requests_total{code="200"} 8
+promhttp_metric_handler_requests_total{code="500"} 0
+promhttp_metric_handler_requests_total{code="503"} 0

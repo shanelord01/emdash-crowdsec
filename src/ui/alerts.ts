@@ -197,7 +197,7 @@ export function renderAlerts(input: AlertsInput): SecurityBlock[] {
 				decision: row.decisionType || "",
 				...(input.canDelete && {
 					delete: deletable(row, now)
-						? button(`${ALERTS_DELETE}|${encoded}`, t(lang, "delete"), {
+						? button(`${ALERTS_DELETE}|${encoded}|${row.id}`, t(lang, "delete"), {
 								style: "danger",
 								value: row.id,
 								confirm: confirmDialog(

@@ -10,7 +10,7 @@
 
 import type { PluginContext } from "emdash/plugin";
 
-import type { AlertRow, DayRow } from "./rows.js";
+import type { AlertRow, DayRow, TrafficDay } from "./rows.js";
 
 export interface Page<T> {
 	items: Array<{ id: string; data: T }>;
@@ -85,4 +85,8 @@ export function alertsStore(ctx: PluginContext): Typed<AlertRow> | null {
 
 export function daysStore(ctx: PluginContext): Typed<DayRow> | null {
 	return wrap<DayRow>(ctx.storage?.days);
+}
+
+export function trafficStore(ctx: PluginContext): Typed<TrafficDay> | null {
+	return wrap<TrafficDay>(ctx.storage?.traffic);
 }

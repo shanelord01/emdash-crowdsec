@@ -251,7 +251,7 @@ describe("delete_alert", () => {
 
 describe("the admin pages' writes", () => {
 	const active = [{ ...sampleAlerts()[0], decisions: [{ id: 1200226, type: "ban", duration: "3h", value: "203.0.113.10", origin: "crowdsec", scenario: "crowdsecurity/appsec-bot-challenge-too-many-requests" }] }];
-	const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&limit=100`;
+	const activeUrl = `${LAPI}/v1/alerts?has_active_decision=true&simulated=false&include_capi=false&limit=100`;
 
 	it("hides every write control from an editor, and refuses an editor's write", async () => {
 		host = await writeHost();
@@ -272,7 +272,8 @@ describe("the admin pages' writes", () => {
 		await host.http.respond(activeUrl, json(active));
 		const page = await host.admin.loadPage(DECISIONS_PATH);
 		const text = JSON.stringify(page.blocks);
-		expect(text).toContain('"action_id":"cs:decisions:remove|asc"');
+		// Each row's button has an action id of its own.
+		expect(text).toContain('"action_id":"cs:decisions:remove|asc|1200226"');
 		expect(text).toContain('"confirm":{');
 		expect(text).toContain("198.51.100.10"); // the site
 		expect(text).toContain("198.51.100.20"); // the LAPI host
@@ -292,6 +293,7 @@ describe("the admin pages' writes", () => {
 		host = await writeHost();
 		await host.http.respond(activeUrl, json([]));
 		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.60&has_active_decision=true&simulated=true&limit=20`, json([]));
 		const review = await host.admin.submit(DECISIONS_PATH, BAN_REVIEW, { value: "203.0.113.60", duration: "24h", type: "captcha", note: "" });
 		const text = JSON.stringify(review.blocks);
 		expect(text).toContain(`"action_id":"${BAN_CONFIRM}"`);

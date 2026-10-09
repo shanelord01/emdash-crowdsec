@@ -122,7 +122,7 @@ describe("the sync against a LAPI", () => {
 			Array.from({ length: DEFAULT_BATCH }, (_, i) => ({ ...base, id: 10_000 + i, start_at: new Date(createdAt(i)).toISOString(), created_at: new Date(createdAt(i)).toISOString() }));
 
 		// The oldest of a full batch was created after the head: alerts between were not reached.
-		await setState(host, { dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { blocklistPurged: true, dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
 		await respondLogin(host);
 		const recent = batchOf((i) => Date.now() - 60_000 - i * 1000);
 		await respondSearch(host, (now) => ({ since: new Date(now.getTime() - 24 * 3_600_000), limit: DEFAULT_BATCH, simulated: false }), recent);
@@ -133,7 +133,7 @@ describe("the sync against a LAPI", () => {
 		expect(s1.gaps![0]!.to).toBe(recent.at(-1)!.created_at);
 
 		// A full batch reaching back past the head: everything new was read.
-		await setState(host, { dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { blocklistPurged: true, dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
 		host.http.clear();
 		await respondLogin(host);
 		const spanning = batchOf((i) => Date.now() - 60_000 - i * 3 * 60_000);

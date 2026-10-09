@@ -25,6 +25,7 @@ import type { PluginContext } from "emdash/plugin";
 
 import { failure, type Problem } from "../i18n.js";
 import type { LapiClient } from "../lapi/client.js";
+import { isBlocklistDecision } from "../lapi/blocklist.js";
 import type { RawDecision } from "../lapi/types.js";
 import { checkBanTarget, displayNetwork, isSingleAddress, parseNetwork, sameNetwork } from "../net/ip.js";
 import { callerAddresses, DNS_KEY, dnsFresh, isLocalName, namesToResolve, protections, resolveNames, type DnsCache } from "../net/protect.js";
@@ -273,16 +274,22 @@ export async function removeBansOn(
 	const value = displayNetwork(parsed);
 	const network = parseNetwork(value)!;
 	const start = lapi.calls;
-	const res = await lapi.alerts({ scope: isSingleAddress(network) ? "Ip" : "Range", value, activeOnly: true, limit: 50, simulated: true });
+	// One address's search includes the community blocklist, so it can say
+	// when that is all that blocks it.
+	const res = await lapi.alerts({ scope: isSingleAddress(network) ? "Ip" : "Range", value, activeOnly: true, limit: 50, simulated: true, blocklists: "include" });
 	if (!res.ok) return { ok: false, problem: res.problem };
 
 	const ids = new Set<number>();
+	let blocklisted = false;
 	for (const alert of res.value) {
 		for (const decision of alert.decisions ?? []) {
-			if (activeDecision(decision) && typeof decision.id === "number" && sameNetwork(decision.value, value)) ids.add(decision.id);
+			if (!activeDecision(decision) || typeof decision.id !== "number" || !sameNetwork(decision.value, value)) continue;
+			// Blocklist decisions are not removed: CrowdSec adds them back on its next pull.
+			if (isBlocklistDecision(decision)) blocklisted = true;
+			else ids.add(decision.id);
 		}
 	}
-	if (ids.size === 0) return refuse("noActiveBan", { value });
+	if (ids.size === 0) return refuse(blocklisted ? "onlyBlocklisted" : "noActiveBan", { value });
 
 	const removed: number[] = [];
 	for (const id of ids) {

@@ -12,7 +12,7 @@
  * the pages produce.
  */
 
-import type { BannerBlock, ChartBlock, CodeBlock } from "@emdash-cms/blocks";
+import type { BannerBlock, ChartBlock, CodeBlock, MeterBlock } from "@emdash-cms/blocks";
 import type {
 	ActionElement,
 	ActionsBlock,
@@ -179,8 +179,27 @@ export function dailyChart(opts: {
 	style: "line" | "bar";
 	height: number;
 	blockId?: string;
+	/** Bars side by side rather than stacked. */
+	grouped?: boolean;
+	/** Categories down the side, bars across: for long labels such as country names. */
+	horizontal?: boolean;
 }): ChartBlock {
 	const drawn = opts.series.filter((s) => s.data.some((v) => typeof v === "number" && v > 0));
+	const category = {
+		type: "category",
+		data: opts.labels,
+		boundaryGap: opts.style === "bar",
+		axisLine: { show: false },
+		splitLine: { show: false },
+		...(opts.horizontal && { inverse: true }),
+	};
+	const value = {
+		type: "value",
+		minInterval: 1,
+		axisTick: { show: true },
+		axisLabel: { margin: 15 },
+		splitLine: { show: true, lineStyle: { type: "dashed", width: 1 } },
+	};
 	return {
 		type: "chart",
 		config: {
@@ -189,25 +208,30 @@ export function dailyChart(opts: {
 			options: {
 				aria: { enabled: true },
 				tooltip: { trigger: "axis" },
-				xAxis: { type: "category", data: opts.labels, boundaryGap: opts.style === "bar", axisLine: { show: false }, splitLine: { show: false } },
-				yAxis: {
-					type: "value",
-					minInterval: 1,
-					axisTick: { show: true },
-					axisLabel: { margin: 15 },
-					splitLine: { show: true, lineStyle: { type: "dashed", width: 1 } },
-				},
-				grid: { left: 24, right: 24, top: 24, bottom: 24 },
+				xAxis: opts.horizontal ? value : category,
+				yAxis: opts.horizontal ? category : value,
+				grid: { left: 24, right: 24, top: 24, bottom: 24, containLabel: true },
 				series: drawn.map((s) => ({
 					type: opts.style,
 					name: s.name,
 					data: s.data,
 					emphasis: { focus: "series" },
-					...(s.colour !== undefined && { itemStyle: { color: s.colour } }),
-					...(opts.style === "bar" ? { stack: "total" } : { showSymbol: true, symbolSize: 4, connectNulls: false }),
+					...(s.colour !== undefined && { itemStyle: { color: s.colour }, ...(opts.style === "line" && { lineStyle: { color: s.colour } }) }),
+					...(opts.style === "bar" ? (opts.grouped || opts.horizontal ? {} : { stack: "total" }) : { showSymbol: true, symbolSize: 4, connectNulls: false }),
 				})),
 			},
 		},
+		...(opts.blockId !== undefined && { block_id: opts.blockId }),
+	};
+}
+
+export function meter(opts: { label: string; value: number; max: number; customValue?: string; blockId?: string }): MeterBlock {
+	return {
+		type: "meter",
+		label: opts.label,
+		value: opts.value,
+		max: opts.max,
+		...(opts.customValue !== undefined && { custom_value: opts.customValue }),
 		...(opts.blockId !== undefined && { block_id: opts.blockId }),
 	};
 }
@@ -264,4 +288,5 @@ export type SecurityBlock =
 	| CodeBlock
 	| FormBlock
 	| SectionBlock
-	| FieldsBlock;
+	| FieldsBlock
+	| MeterBlock;

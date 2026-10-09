@@ -11,7 +11,10 @@ import { t, type Lang } from "../i18n.js";
 import type { SourceId } from "../settings.js";
 import { coveredSince, sumHours, type SyncState } from "../sync/scheduler.js";
 import { actions, button, context, empty, link, stats, table, type SecurityBlock } from "./blocks.js";
-import { comparisonText, formatAge, formatCount, trendOf } from "./format.js";
+import { comparisonText, formatAge, formatCount, formatShort, trendOf } from "./format.js";
+import { discarded } from "../metrics/sample.js";
+import type { TrafficDay } from "../store/rows.js";
+import { addDays, daysBetween, localDay } from "../sync/time.js";
 import { SECURITY_PATH, WIDGET_REFRESH } from "./ids.js";
 import { emptyReason, statusLine } from "./status.js";
 import { ranked } from "../store/rows.js";
@@ -24,9 +27,13 @@ export interface WidgetInput {
 	zone: string;
 	now: Date;
 	lang: Lang;
+	/** Traffic days for this week and the one before, when the traffic charts are on. */
+	traffic?: TrafficDay[];
+	/** When metrics sampling started, for the weekly comparison. */
+	sampledSince?: string;
 }
 
-export function renderWidget({ state, source, zone, now, lang }: WidgetInput): SecurityBlock[] {
+export function renderWidget({ state, source, zone, now, lang, traffic, sampledSince }: WidgetInput): SecurityBlock[] {
 	const nowMs = now.getTime();
 	const current = sumHours(state, nowMs - 24 * HOUR_MS, nowMs + HOUR_MS);
 	const previous = sumHours(state, nowMs - 48 * HOUR_MS, nowMs - 24 * HOUR_MS);
@@ -63,6 +70,28 @@ export function renderWidget({ state, source, zone, now, lang }: WidgetInput): S
 			{ label: t(lang, "kindBehaviour"), value: formatCount(current.behaviour, lang) },
 		]),
 	];
+
+	if (traffic) {
+		// Seven local days, today included, against the seven before.
+		const today = localDay(now, zone);
+		const sum = (from: number, to: number) =>
+			traffic
+				.filter((d) => daysBetween(addDays(today, -to), d.date) >= 0 && daysBetween(d.date, addDays(today, -from)) >= 0)
+				.reduce((n, d) => n + discarded(d.counters, "packets").total, 0);
+		const week = sum(0, 6);
+		const before = sampledSince && localDay(sampledSince, zone) <= addDays(today, -13) ? sum(7, 13) : null;
+		const weekTrend = trendOf(week, before);
+		out.push(
+			stats([
+				{
+					label: t(lang, "discardedWeek"),
+					value: t(lang, "packetsShort", { count: formatShort(week, lang) }),
+					description: comparisonText(week, before, lang),
+					...(weekTrend && { trend: weekTrend }),
+				},
+			]),
+		);
+	}
 
 	const top = ranked(current.scenarios).slice(0, 3);
 	if (top.length > 0) {
