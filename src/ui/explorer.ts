@@ -331,22 +331,22 @@ function filterBlocks(input: ExplorerInput, kindOnly: LogAlert[], selected: LogA
 		);
 	}
 	out.push(
-		form(
+		form([textInput("ip", t(lang, "m2w"), { placeholder: "203.0.113.7 or 203.0.113.0/24", ...(view.f.ip && { initialValue: view.f.ip }) })], { label: t(lang, "m2x"), actionId: xid("filter", view) }, { blockId: "cs:x:filters" }),
+	);
+	// The form block stacks its fields, an actions row wraps them. Each select applies as soon as it changes.
+	const pick = (key: FilterKey, label: MessageKey, options: Array<{ label: string; value: string }>) =>
+		select(xid(`f:${key}`, view), t(lang, label), options, { initialValue: view.f[key] ?? "" });
+	out.push(
+		actions(
 			[
-				textInput("ip", t(lang, "m2w"), { placeholder: "203.0.113.7 or 203.0.113.0/24", ...(view.f.ip && { initialValue: view.f.ip }) }),
-				select("cn", t(lang, "mx"), choices(kindOnly, "country", input, view.f.cn), { initialValue: view.f.cn ?? "" }),
-				select("sc", t(lang, "mv"), choices(kindOnly, "scenario", input, view.f.sc), { initialValue: view.f.sc ?? "" }),
-				select("bh", t(lang, "m2j"), [{ label: t(lang, "any"), value: "" }, ...BEHAVIOURS.map((b) => ({ label: t(lang, BEHAVIOUR_LABEL[b]), value: b }))], {
-					initialValue: view.f.bh ?? "",
-				}),
-				select("as", t(lang, "my"), choices(kindOnly, "as", input, view.f.as), { initialValue: view.f.as ?? "" }),
-				select("tg", t(lang, "m2k"), choices(kindOnly, "path", input, view.f.tg), { initialValue: view.f.tg ?? "" }),
-				...(manyEngines(kindOnly) || view.f.en
-					? [select("en", t(lang, "m2l"), choices(kindOnly, "engine", input, view.f.en), { initialValue: view.f.en ?? "" })]
-					: []),
+				pick("cn", "mx", choices(kindOnly, "country", input, view.f.cn)),
+				pick("sc", "mv", choices(kindOnly, "scenario", input, view.f.sc)),
+				pick("bh", "m2j", [{ label: t(lang, "any"), value: "" }, ...BEHAVIOURS.map((b) => ({ label: t(lang, BEHAVIOUR_LABEL[b]), value: b }))]),
+				pick("as", "my", choices(kindOnly, "as", input, view.f.as)),
+				pick("tg", "m2k", choices(kindOnly, "path", input, view.f.tg)),
+				...(manyEngines(kindOnly) || view.f.en ? [pick("en", "m2l", choices(kindOnly, "engine", input, view.f.en))] : []),
 			],
-			{ label: t(lang, "m2x"), actionId: xid("filter", view) },
-			{ blockId: "cs:x:filters" },
+			{ blockId: "cs:x:selects" },
 		),
 	);
 	out.push(context(t(lang, "m38", { count: selected.length, formatted: formatCount(selected.length, lang) })));
@@ -729,11 +729,16 @@ export function parseExplorerInput(input: Record<string, unknown>): { view: Expl
 	if (base === `${EXPLORER}:filter` && typeof input.values === "object" && input.values !== null) {
 		const values = input.values as Record<string, unknown>;
 		for (const key of FILTER_KEYS) {
+			if (!(key in values)) continue;
 			const value = typeof values[key] === "string" ? (values[key] as string).trim() : "";
 			view = withFilter(view, key, value || null);
 		}
 		// What the decoder does not accept (an address that does not parse) is dropped here too.
 		view = decodeView(encodeView(view));
+	}
+	const picked = /^cs:x:f:([a-z]+)$/.exec(base)?.[1];
+	if (picked && (FILTER_KEYS as readonly string[]).includes(picked) && typeof input.value === "string") {
+		view = decodeView(encodeView(withFilter(view, picked as FilterKey, input.value.trim() || null)));
 	}
 	if (base.startsWith(`${EXPLORER}:tbl`)) {
 		const value = typeof input.value === "object" && input.value !== null ? (input.value as Record<string, unknown>) : {};
