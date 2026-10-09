@@ -157,6 +157,21 @@ describe("the Alerts explorer", () => {
 		expect(bad.blocks.find((b) => b.block_id === "cs:x:chips")).toBeUndefined();
 	});
 
+	it("lays the selects out in one row that applies on change, and keeps the other filters when the address form is sent", async () => {
+		host = await seededHost();
+		const page = await host.admin.act(ALERTS_PATH, xid("f:cn", VIEW), { value: "NL", user: EDITOR });
+		const row = page.blocks.find((b) => b.block_id === "cs:x:selects") as unknown as { type: string; elements: Array<{ type: string; action_id: string; initial_value?: string }> };
+		expect(row.type).toBe("actions");
+		expect(row.elements.every((e) => e.type === "select")).toBe(true);
+		expect(row.elements.find((e) => e.action_id.startsWith("cs:x:f:cn|"))!.initial_value).toBe("NL");
+
+		// The address form no longer carries the selects, so sending it leaves their filters in place.
+		const cnView = { ...VIEW, f: { cn: "NL" } };
+		const sent = await host.admin.submit(ALERTS_PATH, xid("filter", cnView), { ip: "" }, { user: EDITOR });
+		const chips = sent.blocks.find((b) => b.block_id === "cs:x:chips") as unknown as { elements: Array<{ label: string }> };
+		expect(chips.elements.map((e) => e.label)).toEqual(["Country: Netherlands ✕"]);
+	});
+
 	it("switches a panel's breakdown from its menu", async () => {
 		host = await seededHost();
 		const page = await host.admin.act(ALERTS_PATH, xid("dim1", VIEW), { value: "country", user: EDITOR });
