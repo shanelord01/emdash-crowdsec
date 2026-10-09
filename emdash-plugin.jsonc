@@ -20,7 +20,16 @@
 		"requires": { "env:emdash": ">=1.0.1" },
 		"artifacts": {
 			"icon": { "file": "./images/icon.webp" },
-			"banner": { "file": "./images/banner.webp" }
+			"banner": { "file": "./images/banner.webp" },
+			// Taken on a filler-data site ("Coastline Notes") with the Demo
+			// data source and documentation addresses, never a real one.
+			"screenshots": [
+				{ "file": "./images/screenshot-1-alerts-by-day.webp" },
+				{ "file": "./images/screenshot-2-countries.webp" },
+				{ "file": "./images/screenshot-3-alerts.webp" },
+				{ "file": "./images/screenshot-4-decisions.webp" },
+				{ "file": "./images/screenshot-5-dashboard-card.webp" }
+			]
 		}
 	},
 
