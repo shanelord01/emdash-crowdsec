@@ -202,6 +202,8 @@ describe("the Alerts explorer", () => {
 		const text = JSON.stringify(detail.blocks);
 		expect(text).toContain("cs:x:alevents");
 		expect(text).toContain("User agent");
+		// The kind is the plugin's own label, never LAPI's raw value ("crowdsec").
+		expect(text).toMatch(/"label":"Kind","value":"(WAF|Bot challenge|Behaviour|Manual)"/);
 		expect(text).toContain("cs:x:aldecisions");
 		// The detail names the engine with its whole machine id.
 		expect(text).toMatch(/"label":"Engine","value":"(edge-01|web-02|7f3c9a1e2b8d4c6fa0e5b9d2c4f81a37Qx2LmN8pRt5VwZ)"/);

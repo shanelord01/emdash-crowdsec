@@ -21,7 +21,7 @@ import { t, type Lang, type MessageKey } from "../i18n.js";
 import type { RawAlert } from "../lapi/types.js";
 import { daysStore, logStore, BIND_LIMIT } from "../store/access.js";
 import { flatten, kindOfLog, type LogAlert, type LogRow } from "../store/log.js";
-import { KINDS, type Kind } from "../store/rows.js";
+import { KINDS, kindOf, type Kind } from "../store/rows.js";
 import { localDay, parseGoDuration } from "../sync/time.js";
 import { BAN_DURATIONS, DELETE_GRACE_S, type BanCheck, type BanInput } from "../write/actions.js";
 import { BEHAVIOURS, type Behaviour } from "../explorer/behaviour.js";
@@ -601,7 +601,7 @@ function detailBlocks(input: ExplorerInput): SecurityBlock[] {
 				{ label: t(lang, "mw"), value: ip || t(lang, "unknown") },
 				{ label: t(lang, "mx"), value: countryName(lang)(alert.source?.cn ?? "") || t(lang, "unknown") },
 				{ label: t(lang, "my"), value: alert.source?.as_name || t(lang, "unknown") },
-				{ label: t(lang, "m2b"), value: alert.kind ?? "" },
+				{ label: t(lang, "m2b"), value: t(lang, KIND_LABEL[kindOf(alert)]) },
 				{ label: t(lang, "m2l"), value: engineFull(alert.machine_id ?? "", input.engineNames, lang) },
 				{ label: t(lang, "started"), value: alert.start_at ? formatCompact(alert.start_at, lang, zone, now) : "" },
 				{ label: t(lang, "m3y"), value: String(alert.events_count ?? 0) },
