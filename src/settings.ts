@@ -42,6 +42,8 @@ export interface CrowdSecSettings {
 	firewallMetricsUrl: string;
 	/** Why a metrics URL that was entered cannot be used. */
 	metricsProblems: { engine?: Problem; firewall?: Problem };
+	/** Display names for CrowdSec agents, by `machine_id`. */
+	engineNames: Record<string, string>;
 }
 
 export const DEFAULT_SYNC_INTERVAL = "*/15 * * * *";
@@ -78,6 +80,7 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 		engineMetricsUrl: "",
 		firewallMetricsUrl: "",
 		metricsProblems: {},
+		engineNames: parseEngineNames(raw.get("engineNames")),
 	};
 	// The metrics URLs follow the LAPI URL's rules. One that cannot be used
 	// turns its charts off and shows on the setup check: the alerts still sync.
@@ -113,6 +116,24 @@ export function settingsFrom(raw: Map<string, unknown>): SettingsResult {
 	}
 	if (zoneProblem) return { ok: false, missing: [], problem: zoneProblem, partial: settings };
 	return { ok: true, settings };
+}
+
+/**
+ * The Engine names setting: `machine_id = Display name` entries, one per
+ * line or separated by commas. An entry without `=`, or with either side
+ * empty, is left out. A name is cut to 40 characters.
+ */
+export function parseEngineNames(raw: unknown): Record<string, string> {
+	const out: Record<string, string> = {};
+	if (typeof raw !== "string") return out;
+	for (const entry of raw.split(/[\n,]/)) {
+		const cut = entry.indexOf("=");
+		if (cut < 0) continue;
+		const id = entry.slice(0, cut).trim().slice(0, 200);
+		const name = entry.slice(cut + 1).trim().slice(0, 40);
+		if (id && name && Object.keys(out).length < 100) out[id] = name;
+	}
+	return out;
 }
 
 /**

@@ -29,7 +29,7 @@ describe("settings that cannot be used never wipe the stored history", () => {
 		const runtime = await newHost("lapi");
 		await runtime.fixtures.plugin.storage("alerts", "1", { id: 1, startedAt: "2026-10-01T00:00:00.000Z" });
 		await runtime.fixtures.plugin.storage("days", "2026-10-01", { date: "2026-10-01", alerts: 1 });
-		await setState(runtime, { blocklistPurged: true, dataset: DATASET, head: new Date().toISOString(), gaps: [], lastSync: "x" });
+		await setState(runtime, { dataset: DATASET, head: new Date().toISOString(), gaps: [], lastSync: "x" });
 		return runtime;
 	}
 
@@ -48,7 +48,7 @@ describe("settings that cannot be used never wipe the stored history", () => {
 		// History counted in Berlin: a silent fallback to Sydney would read as a new dataset.
 		host = await withHistory();
 		const berlin = `lapi|${LAPI}|false|Europe/Berlin`;
-		await setState(host, { blocklistPurged: true, dataset: berlin, head: new Date().toISOString(), gaps: [], lastSync: "x" });
+		await setState(host, { dataset: berlin, head: new Date().toISOString(), gaps: [], lastSync: "x" });
 		await host.fixtures.plugin.setting("timeZone", "Europe/Berlinn");
 		for (let i = 0; i < 3; i++) await tick(host)();
 		await expect(host.inspect.storage.list("alerts")).resolves.toHaveLength(1);
@@ -77,7 +77,7 @@ describe("the lease", () => {
 			settings: { source: "demo", timeZone: ZONE },
 			onPut: (name) => {
 				// Another tick claims the state while this one is writing rows.
-				if (name === "alerts" && !other) {
+				if (name === "log" && !other) {
 					other = true;
 					fake.setState({ dataset: "theirs", lastSync: "theirs" });
 				}
@@ -119,7 +119,7 @@ describe("a burst of alerts in one second", () => {
 			},
 		});
 		const gap = { from: new Date(now.getTime() - 5 * 86_400_000).toISOString(), to: to.toISOString() };
-		fake.setState({ blocklistPurged: true, dataset: DATASET, head: now.toISOString(), gaps: [gap], slot: 1, lastSync: "x" });
+		fake.setState({ logMigrated: true, dataset: DATASET, head: now.toISOString(), gaps: [gap], slot: 1, lastSync: "x" });
 
 		await runSync(fake.ctx, now, "catchup", "catchup-a");
 		expect(fake.state()).toMatchObject({ batch: DEFAULT_BATCH * 2, burst: gap.to, gaps: [gap] });
@@ -147,7 +147,7 @@ describe("the ban protections' lookup", () => {
 			fetch: async (url) => (url.startsWith("https://cloudflare-dns.com") ? json({}, 500) : active(url)),
 		});
 		const now = new Date();
-		fake.setState({ blocklistPurged: true, dataset: DATASET, head: now.toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		fake.setState({ logMigrated: true, dataset: DATASET, head: now.toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		await runSync(fake.ctx, now, "scheduled");
 		const state = fake.state()!;
 		expect(state.active?.bans).toBeGreaterThan(0);
@@ -166,7 +166,7 @@ describe("the ban protections' lookup", () => {
 			fetch: async (url) => (url.startsWith("https://cloudflare-dns.com") ? json({ Answer: [{ type: 1, data: "198.51.100.20" }] }) : active(url)),
 		});
 		const now = new Date();
-		fake.setState({ blocklistPurged: true, dataset: DATASET, head: now.toISOString(), gaps: [], slot: 2, lastSync: "x" });
+		fake.setState({ logMigrated: true, dataset: DATASET, head: now.toISOString(), gaps: [], slot: 2, lastSync: "x" });
 		await runSync(fake.ctx, now, "scheduled");
 		expect(fake.requests.some((u) => u.includes("name=localhost"))).toBe(false);
 		expect(fake.state()?.active?.bans).toBeGreaterThan(0);

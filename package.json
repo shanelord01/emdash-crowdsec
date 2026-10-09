@@ -1,6 +1,6 @@
 {
 	"name": "emdash-crowdsec",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"description": "EmDash plugin: CrowdSec alerts, bans and top threats on the dashboard, read-only from the Local API.",
 	"keywords": [

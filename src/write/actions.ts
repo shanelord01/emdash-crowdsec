@@ -30,8 +30,9 @@ import type { RawDecision } from "../lapi/types.js";
 import { checkBanTarget, displayNetwork, isSingleAddress, parseNetwork, sameNetwork } from "../net/ip.js";
 import { callerAddresses, DNS_KEY, dnsFresh, isLocalName, namesToResolve, protections, resolveNames, type DnsCache } from "../net/protect.js";
 import type { CrowdSecSettings } from "../settings.js";
-import { alertsStore } from "../store/access.js";
-import { parseGoDuration, rfc3339 } from "../sync/time.js";
+import { BIND_LIMIT, logStore } from "../store/access.js";
+import type { LogRow } from "../store/log.js";
+import { localDay, parseGoDuration, rfc3339 } from "../sync/time.js";
 
 export const ADMIN_ROLE = 50;
 
@@ -44,6 +45,8 @@ export type BanType = (typeof BAN_TYPES)[number];
 export const MAX_NOTE = 120;
 /** How long after its decisions end an alert may be deleted. */
 export const DELETE_GRACE_S = 120;
+/** Pages of a day's alert log a delete reads: 300 rows, more than a busy day holds. */
+export const LOG_QUERIES = 3;
 
 export interface Caller {
 	user?: { id?: string; name?: string | null; role?: number } | null;
@@ -74,9 +77,20 @@ export function writeGate(settings: CrowdSecSettings, caller: Caller, requireRol
 	return { ok: true, value: null };
 }
 
-/** Is a write control worth showing? The same test as `writeGate`, without the reason. */
+/**
+ * Which write controls a caller sees: "live" ones that change CrowdSec,
+ * "demo" ones that run every check and change nothing, or none. Demo data
+ * shows administrators the whole product, with or without Allow changes,
+ * and never sends a request anywhere.
+ */
+export function writeMode(settings: CrowdSecSettings, caller: Caller): "live" | "demo" | null {
+	if (settings.source === "demo") return (caller.user?.role ?? 0) >= ADMIN_ROLE && settings.protectedInvalid.length === 0 ? "demo" : null;
+	return writeGate(settings, caller).ok ? "live" : null;
+}
+
+/** Is a write control worth showing? */
 export function canWrite(settings: CrowdSecSettings, caller: Caller): boolean {
-	return writeGate(settings, caller).ok;
+	return writeMode(settings, caller) !== null;
 }
 
 export interface BanInput {
@@ -124,7 +138,8 @@ export async function checkBan(
 	value: string,
 	now: Date,
 ): Promise<WriteResult<BanCheck>> {
-	const names = namesToResolve(ctx.site.url, settings.lapiUrl);
+	// Demo data looks nothing up: the review runs on the rules that need no network.
+	const names = settings.source === "demo" ? [] : namesToResolve(ctx.site.url, settings.lapiUrl);
 	// A local site name cannot be looked up, so a ban could cover the site
 	// without anyone knowing. Bans stay refused until the site URL is public.
 	const local = names.find(isLocalName);
@@ -309,20 +324,29 @@ function activeDecision(decision: RawDecision): boolean {
 
 /**
  * Delete one alert by id, never in bulk, and only once its decisions ended
- * more than `DELETE_GRACE_S` ago. Calls: the login, the GET, the DELETE
- * and the stored row's delete, all inside `callsAvailable`. When too few
- * are left after the GET, it asks to be tried again rather than stop
- * between the two deletes.
+ * more than `DELETE_GRACE_S` ago. Calls: the login, the GET, the DELETE,
+ * then the alert log's rows for the alert's local day (a query and a
+ * write), all inside `callsAvailable`. When too few are left after the
+ * GET, it asks to be tried again rather than stop between the deletes.
+ * `dayHint` is the local day the caller saw the alert on, used when LAPI
+ * no longer has it.
  */
-export async function deleteAlert(ctx: PluginContext, lapi: LapiClient, id: unknown, callsAvailable = 8): Promise<WriteResult<{ id: number }>> {
+export async function deleteAlert(
+	ctx: PluginContext,
+	lapi: LapiClient,
+	id: unknown,
+	zone: string,
+	callsAvailable = 8,
+	dayHint?: string,
+): Promise<WriteResult<{ id: number }>> {
 	const n = positiveId(id);
 	if (n === null) return refuse("invalidId");
 	const start = lapi.calls;
 	const found = await lapi.alert(n);
 	if (!found.ok) return { ok: false, problem: found.problem };
 	if (!found.value) {
-		// LAPI no longer has it, so the stored row goes too.
-		await alertsStore(ctx)?.deleteMany([String(n)]);
+		// LAPI no longer has it, so the stored copy goes too.
+		if (dayHint && lapi.calls - start + LOG_QUERIES + 1 <= callsAvailable) await removeFromLog(ctx, n, dayHint);
 		return refuse("alertGone", { id: n });
 	}
 
@@ -334,12 +358,36 @@ export async function deleteAlert(ctx: PluginContext, lapi: LapiClient, id: unkn
 		if (left > -DELETE_GRACE_S) return refuse("alertDecisionJustEnded", { id: n });
 	}
 
-	// The DELETE at its worst and the stored row's delete must both fit.
-	if (lapi.calls - start + REQUEST_WORST + 1 > callsAvailable) return refuse("tryAgain");
+	// The DELETE at its worst and the log's queries and write must all fit.
+	if (lapi.calls - start + REQUEST_WORST + LOG_QUERIES + 1 > callsAvailable) return refuse("tryAgain");
 	const res = await lapi.deleteAlert(n);
 	if (!res.ok) return { ok: false, problem: res.problem };
-	await alertsStore(ctx)?.deleteMany([String(n)]);
+	const startedAt = found.value.start_at ?? found.value.created_at;
+	const day = startedAt && !Number.isNaN(Date.parse(startedAt)) ? localDay(startedAt, zone) : dayHint;
+	if (day) await removeFromLog(ctx, n, day);
 	return { ok: true, value: { id: n } };
+}
+
+/**
+ * Take one alert out of the log's rows for a day, reading up to `queries`
+ * pages of them. Calls: the queries, and the write when a row held it.
+ */
+export async function removeFromLog(ctx: PluginContext, id: number, day: string, queries = LOG_QUERIES): Promise<boolean> {
+	const log = logStore(ctx);
+	if (!log) return false;
+	const changed: Array<{ id: string; data: LogRow }> = [];
+	let cursor: string | undefined;
+	for (let i = 0; i < queries; i++) {
+		const page = await log.query({ where: { day }, limit: BIND_LIMIT, ...(cursor ? { cursor } : {}) });
+		for (const item of page.items) {
+			if (item.data.alerts.some((a) => a.i === id)) changed.push({ id: item.id, data: { ...item.data, alerts: item.data.alerts.filter((a) => a.i !== id) } });
+		}
+		if (!page.hasMore || !page.cursor) break;
+		cursor = page.cursor;
+	}
+	if (changed.length === 0) return false;
+	await log.putMany(changed);
+	return true;
 }
 
 function positiveId(value: unknown): number | null {

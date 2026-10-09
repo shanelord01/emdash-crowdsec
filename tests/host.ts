@@ -76,8 +76,9 @@ export async function respondSearch(runtime: PluginRuntimeTestHost, query: (now:
 	return urls;
 }
 
+/** A stored state. One from 0.1.1 on has moved its alert rows into the log, unless the test says otherwise. */
 export async function setState(runtime: PluginRuntimeTestHost, state: SyncState) {
-	await runtime.fixtures.plugin.kv("sync.state", state);
+	await runtime.fixtures.plugin.kv("sync.state", { logMigrated: true, ...state });
 }
 
 export const tick = (runtime: PluginRuntimeTestHost, name = "sync") => () =>

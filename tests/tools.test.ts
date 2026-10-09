@@ -4,6 +4,9 @@ import { z } from "zod";
 
 import { TOOL_ROUTES } from "../src/tools/load.js";
 import { ADMIN, json, LAPI, newHost, respondLogin, sampleAlerts, tick, warmDns } from "./host.js";
+import { bridgeCalls } from "./bridge-calls.js";
+
+const within = (calls: string[]) => expect(calls.length).toBeLessThanOrEqual(10);
 
 let host: PluginRuntimeTestHost | undefined;
 
@@ -48,7 +51,7 @@ describe("the manifest's MCP tools", () => {
 		const manifest = host.manifest as unknown as { routes?: Array<string | { name: string; permission?: string; public?: boolean }> };
 		const routes = new Map((manifest.routes ?? []).map((r) => (typeof r === "string" ? [r, { name: r }] : [r.name, r])));
 		const tools = toolsOf(host);
-		expect(tools.map((t) => t.name).sort()).toEqual(["active_decisions", "ban_ip", "delete_alert", "ip_alerts", "remove_ban", "security_summary", "top_threats", "traffic_summary"]);
+		expect(tools.map((t) => t.name).sort()).toEqual(["active_decisions", "alerts_explorer", "ban_ip", "delete_alert", "ip_alerts", "remove_ban", "security_summary", "top_threats", "traffic_summary"]);
 		for (const tool of tools) {
 			const route = routes.get(tool.route) as { permission?: string; public?: boolean } | undefined;
 			expect(route, tool.name).toBeDefined();
@@ -73,6 +76,41 @@ describe("answers match their declared schemas", () => {
 		const top = await call(host, TOOL_ROUTES.top, { days: 7, limit: 3 });
 		expect(top.scenarios.length).toBeLessThanOrEqual(3);
 		expect(top.scenarios.length).toBeGreaterThan(0);
+	});
+
+	it("alerts_explorer, before any sync and after one, filtered and paged, within the budget", async () => {
+		host = await newHost("demo");
+		const empty = await call(host, TOOL_ROUTES.explorer);
+		expect(empty).toMatchObject({ total: 0, partial: false, groups: { total: 0, items: [], nextPage: null } });
+		await tick(host)();
+		let all: Record<string, any> = {};
+		const calls = await bridgeCalls(async () => {
+			all = await call(host!, TOOL_ROUTES.explorer, { period: "7d", breakdowns: ["country", "behaviour"], limit: 3 });
+		});
+		within(calls);
+		expect(all.total).toBeGreaterThan(0);
+		expect(all.breakdowns.map((b: { dimension: string }) => b.dimension)).toEqual(["country", "behaviour"]);
+		expect(all.groups.items).toHaveLength(3);
+		expect(all.groups.nextPage).toBe(1);
+		const next = await call(host, TOOL_ROUTES.explorer, { period: "7d", breakdowns: ["country", "behaviour"], limit: 3, page: 1, until: all.period.until });
+		expect(next.period.until).toBe(all.period.until);
+		const first = new Set(all.groups.items.map((g: { address: string }) => g.address));
+		expect(next.groups.items.some((g: { address: string }) => first.has(g.address))).toBe(false);
+		const sum = all.breakdowns[0].top.reduce((n: number, t: { alerts: number }) => n + t.alerts, 0) + all.breakdowns[0].other;
+		expect(sum).toBe(all.total);
+
+		const range = await call(host, TOOL_ROUTES.explorer, { period: "7d", address: "198.51.100.0/24", kind: "waf" });
+		expect(range.total).toBeGreaterThan(0);
+		expect(range.total).toBeLessThan(all.total);
+		expect(range.groups.items.every((g: { address: string }) => g.address.startsWith("198.51.100."))).toBe(true);
+
+		const engine = all.groups.items.flatMap((g: { engines: Array<{ id: string }> }) => g.engines)[0]!.id;
+		const byEngine = await call(host, TOOL_ROUTES.explorer, { period: "7d", engine, breakdowns: ["engine"] });
+		expect(byEngine.total).toBeGreaterThan(0);
+		expect(byEngine.breakdowns[0].top).toEqual([{ value: engine, alerts: byEngine.total, share: 1 }]);
+
+		const response = await host.actions.routes.request(TOOL_ROUTES.explorer, { body: { address: "not-an-ip" }, user: ADMIN, headers: { "X-EmDash-Request": "1" } });
+		expect(response.status).not.toBe(200);
 	});
 
 	it("active_decisions and ip_alerts, live, with ip_alerts keeping exact source matches only", async () => {

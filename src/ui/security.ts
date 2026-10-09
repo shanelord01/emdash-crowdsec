@@ -23,7 +23,8 @@ import type { PluginContext } from "emdash/plugin";
 
 import { t, type Lang, type MessageKey } from "../i18n.js";
 import { discarded, ORIGIN_GROUPS, sumCounters, CHALLENGE_STAGES, type Counters, type OriginGroup } from "../metrics/sample.js";
-import type { SourceId } from "../settings.js";
+import type { CrowdSecSettings, SourceId } from "../settings.js";
+import { demoMetricsState, demoTrafficDays } from "../metrics/demo.js";
 import { daysStore, trafficStore, BIND_LIMIT } from "../store/access.js";
 import { ranked, sumMaps, type DayRow, type TrafficDay } from "../store/rows.js";
 import { coveredSince, sumHours, type MetricsState, type SyncState } from "../sync/scheduler.js";
@@ -44,7 +45,7 @@ import {
 	type DailySeries,
 	type SecurityBlock,
 } from "./blocks.js";
-import { comparisonText, countryName, formatAge, formatBytes, formatCount, formatHour, formatShort, formatShortDay, trendOf } from "./format.js";
+import { comparisonText, countryName, engineLabel, formatAge, formatBytes, formatCount, formatHour, formatShort, formatShortDay, trendOf } from "./format.js";
 import { ALERTS_PATH, DECISIONS_PATH, PAGE_REFRESH, RANGE_ACTION, SETUP_ACTION } from "./ids.js";
 import { emptyReason, statusLine } from "./status.js";
 
@@ -90,6 +91,8 @@ export interface SecurityInput {
 	days: DayRow[];
 	traffic: TrafficDay[];
 	metrics: MetricsState | null;
+	/** The Engine names setting, for the alerts-by-engine chart. */
+	engineNames?: Record<string, string>;
 	/** True when a metrics URL is set or the data is demo data. */
 	metricsOn: boolean;
 	now: Date;
@@ -122,6 +125,16 @@ export async function loadDays(ctx: PluginContext, since: Day): Promise<DayRow[]
 /** Traffic days since a day. Calls: one or two queries. */
 export async function loadTraffic(ctx: PluginContext, since: Day): Promise<TrafficDay[]> {
 	return await loadSince<TrafficDay>(trafficStore(ctx), since);
+}
+
+/** Traffic days since a day: worked out for demo data, stored otherwise. Calls: none for demo data, else one or two queries. */
+export async function trafficFor(ctx: PluginContext, settings: Pick<CrowdSecSettings, "source" | "timeZone">, since: Day, now: Date): Promise<TrafficDay[]> {
+	return settings.source === "demo" ? demoTrafficDays(since, settings.timeZone, now) : await loadTraffic(ctx, since);
+}
+
+/** The sampler's state: worked out for demo data over the retention window, as stored otherwise. */
+export function metricsFor(stored: MetricsState | null, settings: Pick<CrowdSecSettings, "source" | "retentionDays">, now: Date): MetricsState | null {
+	return settings.source === "demo" ? demoMetricsState(now, settings.retentionDays) : stored;
 }
 
 /** The first day a range's page reads, the previous period included. */
@@ -187,6 +200,24 @@ export function renderSecurity(input: SecurityInput): SecurityBlock[] {
 		out.push(seriesLine(lang, [{ name: t(lang, "alertsByCountry"), colour: 0 }]));
 	} else {
 		out.push(context(t(lang, "nothingRecorded")));
+	}
+
+	// Alerts by the CrowdSec agent that raised them, when more than one did:
+	// a central LAPI hears from several hosts, and a single host sees no change.
+	const engines = ranked(sumMaps(inRange.map((d) => d.machines ?? {}))).slice(0, TOP_ROWS);
+	if (engines.length > 1) {
+		out.push(header(t(lang, "alertsByEngine")));
+		out.push(
+			dailyChart({
+				labels: engines.map(([id]) => engineLabel(id, input.engineNames, lang)),
+				series: [{ name: t(lang, "colAlerts"), data: engines.map(([, n]) => n), colour: CHART_COLOURS[3] }],
+				style: "bar",
+				horizontal: true,
+				height: Math.max(120, engines.length * 28 + 48),
+				blockId: "cs:chart:engines",
+			}),
+		);
+		out.push(seriesLine(lang, [{ name: t(lang, "alertsByEngineLine"), colour: 3 }]));
 	}
 
 	out.push(
@@ -275,19 +306,26 @@ function dailyView(input: SecurityInput, today: Day): View {
 	const traffic = new Map(input.traffic.map((d) => [d.date, d]));
 	const sampledDay = input.metrics ? localDay(input.metrics.since, zone) : null;
 	const trafficIn = (from: Day, to: Day) => sumCounters(input.traffic.filter((d) => within(d, from, to)).map((d) => d.counters));
+	// Ninety days are drawn in three-day bars: a bar a day would pass the
+	// 2,000 nodes a Block Kit answer may hold once traffic charts are on.
+	const per = range > 30 ? 3 : 1;
+	const groups = Array.from({ length: Math.ceil(dayKeys.length / per) }, (_, i) => dayKeys.slice(i * per, (i + 1) * per));
 	return {
-		labels: dayKeys.map((day) => formatShortDay(day, lang)),
+		labels: groups.map((g) => (per === 1 ? formatShortDay(g[0]!, lang) : t(lang, "periodRange", { from: formatShortDay(g[0]!, lang), to: formatShortDay(g[g.length - 1]!, lang) }))),
 		alertStats: [
 			stat(t(lang, "alertsInRange", { days: range }), "alerts"),
 			stat(t(lang, "bansInRange", { days: range }), "bans"),
 			stat(t(lang, "wafInRange", { days: range }), "waf"),
 		],
 		alertValues: (key) =>
-			dayKeys.map((day) => {
-				const row = byDay.get(day);
-				return row ? row[key] : day >= coveredDay ? 0 : null;
+			groups.map((g) => {
+				const values = g.map((day) => {
+					const row = byDay.get(day);
+					return row ? row[key] : day >= coveredDay ? 0 : null;
+				});
+				return values.every((v) => v === null) ? null : values.reduce<number>((n, v) => n + (v ?? 0), 0);
 			}),
-		trafficBuckets: dayKeys.map((day) => traffic.get(day)?.counters ?? {}),
+		trafficBuckets: groups.map((g) => sumCounters(g.map((day) => traffic.get(day)?.counters ?? {}))),
 		traffic: trafficIn(start, today),
 		trafficBefore: sampledDay !== null && sampledDay < previousStart ? trafficIn(previousStart, addDays(start, -1)) : null,
 		topDays: inRange,
@@ -418,6 +456,7 @@ function trafficSection(input: SecurityInput, view: View): SecurityBlock[] {
 	out.push(context(t(lang, "trafficNote", { age: formatAge(metrics.since, now, lang) ?? "" })));
 	return out;
 }
+
 
 function topTable(blockId: string, label: string, map: Record<string, number>, lang: Lang, format: "text" | "code", display: (value: string) => string = (v) => v) {
 	return table({

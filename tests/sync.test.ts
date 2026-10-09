@@ -1,8 +1,9 @@
 import type { PluginRuntimeTestHost } from "@emdash-cms/plugin-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { AlertRow, DayRow } from "../src/store/rows.js";
-import { batchAfter, batchGrown, clipGaps, DEFAULT_BATCH, floorOf, MIN_BATCH, type SyncState } from "../src/sync/scheduler.js";
+import type { DayRow } from "../src/store/rows.js";
+import type { LogRow } from "../src/store/log.js";
+import { batchAfter, batchGrown, clipGaps, DEFAULT_BATCH, DEMO_BATCH, floorOf, MIN_BATCH, type SyncState } from "../src/sync/scheduler.js";
 import { settingsFrom } from "../src/settings.js";
 import { expectUserAgent, LAPI, newHost, respondLogin, respondSearch, sampleAlerts, setState, tick, ZONE } from "./host.js";
 
@@ -20,8 +21,9 @@ async function state(runtime: PluginRuntimeTestHost) {
 
 async function totals(runtime: PluginRuntimeTestHost) {
 	const days = await runtime.inspect.storage.list<DayRow>("days");
-	const alerts = await runtime.inspect.storage.list<AlertRow>("alerts");
-	return { counted: days.reduce((n, d) => n + d.data.alerts, 0), rows: alerts.length, days, alerts };
+	const log = await runtime.inspect.storage.list<LogRow>("log");
+	const alerts = log.flatMap((row) => row.data.alerts);
+	return { counted: days.reduce((n, d) => n + d.data.alerts, 0), rows: alerts.length, days, alerts, log };
 }
 
 describe("the sync with demo data", () => {
@@ -33,7 +35,9 @@ describe("the sync with demo data", () => {
 		expect(s.head).toEqual(expect.any(String));
 		expect(s.gaps?.length).toBe(1);
 		const { counted, rows } = await totals(host);
-		expect(rows).toBe(DEFAULT_BATCH);
+		// Demo data costs no call per search, so a step reads far more than a LAPI batch.
+		expect(rows).toBeGreaterThan(DEFAULT_BATCH);
+		expect(rows).toBeLessThanOrEqual(DEMO_BATCH);
 		expect(counted).toBe(rows);
 		expect(Object.keys(s.hours ?? {}).length).toBeGreaterThan(0);
 	});
@@ -53,8 +57,20 @@ describe("the sync with demo data", () => {
 		expect(rows).toBeGreaterThan(DEFAULT_BATCH * 2);
 		// Eight local days at most: today and the seven before.
 		expect(days.length).toBeLessThanOrEqual(8);
-		const ids = (await totals(host)).alerts.map((a) => a.data.id);
+		const ids = (await totals(host)).alerts.map((a) => a.i);
 		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	it("fills a 90-day demo window in a few ticks", async () => {
+		host = await newHost("demo", { retentionDays: 90 });
+		let ticks = 0;
+		for (; ticks < 10; ticks++) {
+			await tick(host, ticks === 0 ? "sync" : "catchup-a")();
+			if ((await state(host)).gaps?.length === 0) break;
+		}
+		expect(ticks).toBeLessThan(6);
+		const { counted, rows } = await totals(host);
+		expect(counted).toBe(rows);
 	});
 
 	it("clears the store when the time zone changes, since days were counted in the old one", async () => {
@@ -82,7 +98,7 @@ describe("the sync against a LAPI", () => {
 		expect(s.lastProblem).toBeUndefined();
 		expect(s.gaps).toEqual([]); // fewer alerts than the batch: the window is complete
 		const { alerts, days } = await totals(host);
-		expect(alerts.map((a) => a.data.id).sort()).toEqual([573, 574, 576, 625, 646, 649, 662, 667]);
+		expect(alerts.map((a) => a.i).sort()).toEqual([573, 574, 576, 625, 646, 649, 662, 667]);
 		// 2026-10-08T20:24Z and 21:43Z are 9 October in Sydney.
 		expect(days.map((d) => d.data.date)).toEqual(["2026-10-09"]);
 		expect(days[0]!.data).toMatchObject({ alerts: 8, waf: 2, bot: 1, behaviour: 5, bans: 5 });
@@ -122,7 +138,7 @@ describe("the sync against a LAPI", () => {
 			Array.from({ length: DEFAULT_BATCH }, (_, i) => ({ ...base, id: 10_000 + i, start_at: new Date(createdAt(i)).toISOString(), created_at: new Date(createdAt(i)).toISOString() }));
 
 		// The oldest of a full batch was created after the head: alerts between were not reached.
-		await setState(host, { blocklistPurged: true, dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
 		await respondLogin(host);
 		const recent = batchOf((i) => Date.now() - 60_000 - i * 1000);
 		await respondSearch(host, (now) => ({ since: new Date(now.getTime() - 24 * 3_600_000), limit: DEFAULT_BATCH, simulated: false }), recent);
@@ -133,7 +149,7 @@ describe("the sync against a LAPI", () => {
 		expect(s1.gaps![0]!.to).toBe(recent.at(-1)!.created_at);
 
 		// A full batch reaching back past the head: everything new was read.
-		await setState(host, { blocklistPurged: true, dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
+		await setState(host, { dataset: `lapi|${LAPI}|false|${ZONE}`, head, gaps: [], slot: 0, lastSync: head });
 		host.http.clear();
 		await respondLogin(host);
 		const spanning = batchOf((i) => Date.now() - 60_000 - i * 3 * 60_000);

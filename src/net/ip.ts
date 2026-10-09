@@ -173,6 +173,16 @@ function unmapped(net: Network): Network {
 	return within(net, MAPPED) ? { family: 4, base: net.base & 0xffffffffn, prefix: net.prefix - 96 } : net;
 }
 
+/**
+ * True when `inner` lies inside `outer`, reading an IPv4-mapped form
+ * (`::ffff:a.b.c.d`) on either side as its IPv4 address. NAT64, SIIT and
+ * 6to4 forms are other addresses on the wire, so they do not match an IPv4
+ * filter.
+ */
+export function contains(outer: Network, inner: Network): boolean {
+	return within(unmapped(inner), unmapped(outer));
+}
+
 /** The canonical text LAPI is sent: dotted IPv4, RFC 5952 IPv6, `/n` only for a range. */
 export function formatNetwork(net: Network): string {
 	const address = net.family === 4 ? formatV4(net.base) : formatV6(net.base);

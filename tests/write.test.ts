@@ -2,7 +2,11 @@ import type { PluginRuntimeTestHost } from "@emdash-cms/plugin-test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { TOOL_ROUTES } from "../src/tools/load.js";
-import { BAN_CONFIRM, BAN_REVIEW, DECISIONS_PATH, DECISIONS_REMOVE, ALERTS_DELETE, ALERTS_PATH } from "../src/ui/ids.js";
+import { BAN_CONFIRM, BAN_REVIEW, DECISIONS_PATH, DECISIONS_REMOVE, ALERTS_PATH } from "../src/ui/ids.js";
+import { xid } from "../src/ui/explorer.js";
+import { DEFAULT_VIEW } from "../src/explorer/model.js";
+
+const VIEW = { ...DEFAULT_VIEW, f: {} };
 import { ADMIN, EDITOR, expectUserAgent, json, LAPI, newHost, respondLogin, sampleAlerts, warmDns } from "./host.js";
 
 /**
@@ -227,25 +231,27 @@ describe("delete_alert", () => {
 		expect(host.http.requests().some((r) => r.method === "DELETE")).toBe(false);
 	});
 
-	it("drops the stored row of an alert LAPI no longer has", async () => {
+	const logRow = { day: "2026-10-09", part: "chunk", updatedAt: "", alerts: [625, 626].map((i) => ({ i, t: Date.parse("2026-10-08T20:24:29.000Z"), k: "h", s: "x", a: "203.0.113.14", c: "", o: "", p: "/", d: 0, b: 0 })) };
+
+	it("says so when LAPI no longer has the alert, and deletes nothing", async () => {
 		host = await writeHost();
-		await host.fixtures.plugin.storage("alerts", "626", { id: 626, startedAt: "2026-10-08T20:24:29.000Z", kind: "behaviour" });
 		await host.http.respond(`${LAPI}/v1/alerts/626`, json({ message: "object not found" }, 404));
 		const { data } = await call(host, TOOL_ROUTES.deleteAlert, { id: 626 });
 		expect(data.message).toMatch(/not in CrowdSec any more/);
-		await expect(host.inspect.storage.get("alerts", "626")).resolves.toBeNull();
 		expect(host.http.requests().some((r) => r.method === "DELETE")).toBe(false);
 	});
 
-	it("deletes one alert by id once its decisions are long gone, and drops the stored row", async () => {
+	it("deletes one alert by id once its decisions are long gone, and takes it out of the alert log", async () => {
 		host = await writeHost();
-		await host.fixtures.plugin.storage("alerts", "625", { id: 625, startedAt: "2026-10-08T20:24:29.000Z", kind: "behaviour" });
+		await host.fixtures.plugin.storage("log", "2026-10-09|c625", logRow);
 		await host.http.respond(`${LAPI}/v1/alerts/625`, json(alert("-5m")));
 		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ nbDeleted: "1" }));
 		const { data } = await call(host, TOOL_ROUTES.deleteAlert, { id: 625 });
 		expect(data).toMatchObject({ done: true, message: "Deleted alert 625." });
 		expect(host.http.requests().filter((r) => r.method === "DELETE").map((r) => r.url)).toEqual([`${LAPI}/v1/alerts/625`]);
-		await expect(host.inspect.storage.get("alerts", "625")).resolves.toBeNull();
+		// 20:24 UTC on 8 October is 9 October in Sydney: that day's row loses the alert and keeps the other.
+		const row = await host.inspect.storage.get<{ alerts: Array<{ i: number }> }>("log", "2026-10-09|c625");
+		expect(row?.alerts.map((a) => a.i)).toEqual([626]);
 	});
 });
 
@@ -333,11 +339,113 @@ describe("the admin pages' writes", () => {
 		expect(posts(host)).toEqual([]);
 	});
 
-	it("deletes an old alert from the Alerts page and refuses one whose decision is active", async () => {
+	it("refuses to delete an alert from the explorer while its decision is active", async () => {
 		host = await writeHost();
 		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ ...sampleAlerts().find((a) => a.id === 625), decisions: [{ id: 5, duration: "10m" }] }));
-		const refused = await host.admin.act(ALERTS_PATH, `${ALERTS_DELETE}||`, { value: 625 });
+		const refused = await host.admin.act(ALERTS_PATH, xid("del", { ...VIEW, d: "203.0.113.14", al: 625 }));
 		expect(refused.toast).toMatchObject({ type: "error" });
 		expect(refused.toast?.message).toMatch(/still has an active decision/);
+		expect(host.http.requests().some((r) => r.method === "DELETE")).toBe(false);
+	});
+
+	it("deletes an old alert from its detail in the explorer, and takes it out of the alert log", async () => {
+		host = await writeHost();
+		const day = "2026-10-09";
+		const entry = (i: number) => ({ i, t: Date.parse("2026-10-08T20:24:29.000Z"), k: "h", s: "x", a: "203.0.113.14", c: "", o: "", p: "/", d: 0, b: 0 });
+		// More rows for the day than one query reads: the alert is on a later page.
+		for (let n = 0; n < 150; n++) await host.fixtures.plugin.storage("log", `${day}|c${1000 + n}`, { day, part: "chunk", updatedAt: "", alerts: [entry(1000 + n)] });
+		await host.fixtures.plugin.storage("log", `${day}|c625`, { day, part: "chunk", updatedAt: "", alerts: [entry(625), entry(626)] });
+		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ ...sampleAlerts().find((a) => a.id === 625), decisions: [{ id: 5, type: "ban", duration: "-10m", value: "203.0.113.14" }] }));
+		await host.http.respond(`${LAPI}/v1/alerts/625`, json({ nbDeleted: "1" }));
+		const done = await host.admin.act(ALERTS_PATH, xid("del", { ...VIEW, d: "203.0.113.14", al: 625 }));
+		expect(done.toast).toEqual({ type: "success", message: "Deleted alert 625." });
+		expect(host.http.requests().filter((r) => r.method === "DELETE").map((r) => r.url)).toEqual([`${LAPI}/v1/alerts/625`]);
+		const row = await host.inspect.storage.get<{ alerts: Array<{ i: number }> }>("log", `${day}|c625`);
+		expect(row?.alerts.map((a) => a.i)).toEqual([626]);
+		// The page after it is the address's alerts, not the deleted alert's detail.
+		expect(JSON.stringify(done.blocks)).not.toContain("cs:x:alfacts");
+	});
+
+	it("reviews and confirms a ban from an address's view in the explorer", async () => {
+		host = await writeHost();
+		const view = { ...VIEW, d: "203.0.113.60" };
+		const page = await host.admin.act(ALERTS_PATH, xid("ipv", view));
+		expect(JSON.stringify(page.blocks)).toContain(xid("banreview", view));
+
+		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.60&has_active_decision=true&simulated=true&limit=20`, json([]));
+		const review = await host.admin.submit(ALERTS_PATH, xid("banreview", view), { duration: "24h", type: "ban", note: "" });
+		expect(review.toast).toBeUndefined();
+		expect(JSON.stringify(review.blocks)).toContain(xid("banok", view));
+		expect(posts(host)).toEqual([]);
+
+		await host.http.respond(`${LAPI}/v1/allowlists/check`, json({ results: [] }));
+		await host.http.respond(`${LAPI}/v1/alerts`, json(["905"], 201));
+		const done = await host.admin.act(ALERTS_PATH, xid("banok", view), { value: { value: "203.0.113.60", duration: "24h", type: "ban", note: "" } });
+		expect(done.toast).toMatchObject({ type: "success" });
+		const [alert] = JSON.parse(new TextDecoder().decode(posts(host)[0]!.body)) as Array<Record<string, any>>;
+		expect(alert.decisions[0]).toMatchObject({ type: "ban", duration: "24h", value: "203.0.113.60" });
+	});
+
+	it("refuses the explorer's ban of the caller's own address, and shows editors no write control", async () => {
+		host = await writeHost();
+		const view = { ...VIEW, d: OWN };
+		const response = await host.actions.routes.request("admin", {
+			body: { type: "block_action", page: ALERTS_PATH, action_id: xid("banok", view), value: { value: OWN, duration: "4h", type: "ban" } },
+			user: ADMIN,
+			headers: { "X-EmDash-Request": "1", "X-Forwarded-For": `${OWN}, 203.0.113.1` },
+		});
+		const { data } = (await response.json()) as { data: { toast?: { message: string } } };
+		expect(data.toast?.message).toBe(`Refused: it covers your own address (${OWN}).`);
+		expect(posts(host)).toEqual([]);
+
+		const editor = await host.admin.act(ALERTS_PATH, xid("ipv", { ...VIEW, d: "203.0.113.60" }), { user: EDITOR });
+		expect(JSON.stringify(editor.blocks)).not.toContain("banreview");
+		const refused = await host.admin.act(ALERTS_PATH, xid("unban", { ...VIEW, d: "203.0.113.60" }), { user: EDITOR });
+		expect(refused.toast).toMatchObject({ type: "error", message: "Only an administrator can change CrowdSec." });
+		expect(host.http.requests().some((r) => r.method === "DELETE")).toBe(false);
+	});
+
+	it("removes the bans on an address from the explorer, by id", async () => {
+		host = await writeHost();
+		const view = { ...VIEW, d: "203.0.113.14" };
+		await host.http.respond(`${LAPI}/v1/alerts?scope=Ip&value=203.0.113.14&has_active_decision=true&simulated=true&limit=50`, json([{ id: 1, decisions: [{ id: 11, value: "203.0.113.14", duration: "1h", type: "ban" }] }]));
+		await host.http.respond(`${LAPI}/v1/decisions/11`, json({ nbDeleted: "1" }));
+		const done = await host.admin.act(ALERTS_PATH, xid("unban", view));
+		expect(done.toast).toMatchObject({ type: "success" });
+		expect(host.http.requests().filter((r) => r.method === "DELETE").map((r) => r.url)).toEqual([`${LAPI}/v1/decisions/11`]);
+	});
+});
+
+describe("demo data", () => {
+	it("shows an administrator every write control, runs the review, and changes nothing", async () => {
+		host = await newHost("demo");
+		const decisions = await host.admin.loadPage(DECISIONS_PATH, { user: ADMIN });
+		const text = JSON.stringify(decisions.blocks);
+		expect(text).toContain(BAN_REVIEW);
+		expect(text).toContain("cs:ban:protected");
+
+		const review = await host.admin.submit(DECISIONS_PATH, BAN_REVIEW, { value: "203.0.113.60", duration: "4h", type: "ban", note: "" }, { user: ADMIN });
+		expect(review.toast).toBeUndefined();
+		expect(JSON.stringify(review.blocks)).toContain(`"action_id":"${BAN_CONFIRM}"`);
+		const refusedReview = await host.admin.submit(DECISIONS_PATH, BAN_REVIEW, { value: "10.0.0.1", duration: "4h", type: "ban", note: "" }, { user: ADMIN });
+		expect(refusedReview.toast).toMatchObject({ type: "error" });
+
+		for (const [page, id, value] of [
+			[DECISIONS_PATH, BAN_CONFIRM, { value: "203.0.113.60", duration: "4h", type: "ban" }],
+			[DECISIONS_PATH, `${DECISIONS_REMOVE}|asc`, 5],
+			[ALERTS_PATH, xid("banok", { ...VIEW, d: "203.0.113.60" }), { value: "203.0.113.60", duration: "4h", type: "ban" }],
+			[ALERTS_PATH, xid("unban", { ...VIEW, d: "203.0.113.60" }), undefined],
+		] as const) {
+			const done = await host.admin.act(page, id, { value, user: ADMIN });
+			expect(done.toast).toEqual({ type: "success", message: "Demo data: nothing was changed." });
+		}
+		const ip = await host.admin.act(ALERTS_PATH, xid("ipv", { ...VIEW, d: "203.0.113.60" }), { user: ADMIN });
+		expect(JSON.stringify(ip.blocks)).toContain("banreview");
+		expect(host.http.requests()).toEqual([]);
+
+		// An editor still sees none of it.
+		const editor = await host.admin.loadPage(DECISIONS_PATH, { user: EDITOR });
+		expect(JSON.stringify(editor.blocks)).not.toContain(BAN_REVIEW);
 	});
 });

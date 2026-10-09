@@ -47,16 +47,19 @@ plain `pnpm install` is enough.
   (`blocklists: "include"`) and the daily count (`origin=CAPI`/`lists`). On a
   live site the blocklist was 71 alerts, 24,004 decisions and 3.5 MB.
   `isBlocklistAlert` and `isBlocklistDecision` (`src/lapi/blocklist.ts`)
-  keep it out of every count even when LAPI sends it. `runPurge` took out
-  rows a pre-release build stored. It runs once per install, and only on
-  installs that synced before the fix.
+  keep it out of every count even when LAPI sends it. 0.1.0 took out the rows a
+  pre-release build stored (`runPurge`, removed in 0.1.1 once every 0.1.0
+  install had run it).
 - **Self-hosted only.** Everything comes from the site's own LAPI and
   Prometheus endpoints. Never call CrowdSec's cloud or Service API.
 - **Metrics are counters that reset.** `src/metrics/sample.ts` keeps the
   last raw sample and stores differences, a drop being a reset. The first
   sample is a baseline, and a source that was down at the baseline starts
   its own. The sampler is its own cron task (`metrics`, seven calls),
-  because the sync tick has no calls to spare.
+  because the sync tick has no calls to spare. It runs only for a LAPI
+  source with a metrics URL (`samplerOn`): a sync tick that finds that
+  changed schedules or cancels it. Demo traffic is worked out when read
+  (`src/metrics/demo.ts`), with nothing sampled or stored.
 - **One action id per button.** A shared `action_id` makes React warn about
   duplicate keys. Range buttons are `cs:range:24h`, `cs:range:7d` and so on,
   and row buttons carry the row's id.
@@ -88,11 +91,25 @@ plain `pnpm install` is enough.
 - **Charts are `custom`, not `timeseries`.** A timeseries tooltip shows a
   day as a timestamp in the viewer's zone. `dailyChart` in
   `src/ui/blocks.ts` uses a category axis of day labels.
+- **Alerts live in the alert log, not one row each.** `src/store/log.ts`.
+  A sync step writes one chunk per local day without a read, and the
+  hourly `reconcile` task (`runMaintenance`) merges a hundred chunks into
+  day parts, or at 3 am local time runs the prune. The `alerts`
+  collection only holds rows 0.1.0 stored until `runMigrate` moves them.
+  A deleted alert is taken out of its day's log rows (`removeFromLog`).
 - **The nightly prune shares its batches.** `runReconcile` has four
-  query-and-delete batches for alert rows and day rows together, so a store
-  with many old alert rows can leave old day rows for the next night. It
-  catches up within a few nights, and day rows are one per day, so this is
-  left as it is.
+  query-and-delete batches for every collection together, so a store with
+  many old rows can leave some for the next night. It catches up within a
+  few nights, so this is left as it is.
+- **A Block Kit answer holds 2,000 JSON nodes at most.** The host refuses
+  a bigger one with a 502. Charts cost a node per point per series, so
+  the 90-day CrowdSec page draws three days a bar, the explorer caps day
+  histograms at 45 bars and its filter selects at twelve options, and
+  `tests/pages.test.ts` renders every explorer view under 1,900.
+- **Demo writes change nothing.** `writeMode` gives administrators the
+  write controls on demo data without Allow changes, the review runs
+  `checkBan` with no DNS lookup, and every write answers
+  `demoNothingChanged`. Never send a request for demo data.
 - **Block Kit keys are snake_case.** Use the constructors in
   `src/ui/blocks.ts`. The renderer silently ignores camelCase.
 - **MCP schemas never reach the runtime.** `src/tools/declare.ts` is
@@ -100,7 +117,9 @@ plain `pnpm install` is enough.
   zod stays a dev dependency. Output schemas are strict, and
   `tests/tools.test.ts` checks each answer against the one the build wrote.
 - **Block Kit keeps no state.** Filters, sort order and positions travel in
-  action ids, button values and table cursors (see `src/ui/alerts.ts`).
+  action ids, button values and table cursors. The explorer's whole view
+  rides after a `|` in every action id (`src/explorer/model.ts`), and the
+  control's role before it, so no two ids repeat.
 - **Test URLs match to the character.** `respondSearch` in `tests/host.ts`
   answers every URL a run could build over a few seconds, since `since` and
   `until` come from the run's clock.

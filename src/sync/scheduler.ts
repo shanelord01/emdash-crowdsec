@@ -50,13 +50,14 @@ import type { PluginContext } from "emdash/plugin";
 
 import { failure, type Problem } from "../i18n.js";
 import { isBlocklistAlert, isBlocklistDecision } from "../lapi/blocklist.js";
-import { compactAlert, countInto, emptyDay, isBlocklistRow, trimDay, uncountFrom, type AlertRow, type DayRow, type Kind } from "../store/rows.js";
-import { alertsStore, daysStore, ID_BATCH, trafficStore } from "../store/access.js";
+import { compactAlert, countInto, emptyDay, isBlocklistRow, trimDay, type AlertRow, type DayRow, type Kind } from "../store/rows.js";
+import { alertsStore, BIND_LIMIT, chunk, daysStore, ID_BATCH, logStore, trafficStore } from "../store/access.js";
+import { chunksOf, flatten, partsOf, type LogRow } from "../store/log.js";
 import { fetchMetrics } from "../metrics/fetch.js";
-import { parsePrometheus, type Series } from "../metrics/prom.js";
-import { carried, deltaOf, demoMetricsText, isFirewallKey, sampleOf, sumCounters, type Gauges } from "../metrics/sample.js";
+import type { Series } from "../metrics/prom.js";
+import { carried, deltaOf, isFirewallKey, sampleOf, sumCounters, type Gauges } from "../metrics/sample.js";
 import { DNS_KEY, dnsFresh, isLocalName, namesToResolve, resolveNames, type DnsCache } from "../net/protect.js";
-import { datasetOf, readSettings, type CrowdSecSettings } from "../settings.js";
+import { datasetOf, readSettings, settingsOf, type CrowdSecSettings } from "../settings.js";
 import { buildSource, type Source } from "../sources.js";
 import { addDays, dayStart, hourKey, hourStart, localDay, parseGoDuration } from "./time.js";
 
@@ -68,7 +69,10 @@ export const REFRESH_TASK = "refresh";
 export const BANS_TASK = "bans";
 /** Chained one-shots while history is being read. Two names, because a one-shot is deleted when its run returns. */
 export const CATCH_UP_TASKS = ["catchup-a", "catchup-b"] as const;
-export const RECONCILE_SCHEDULE = "10 3 * * *";
+/** Hourly: merges the alert log's chunks, and at 3 am local time prunes what the retention no longer keeps. */
+export const RECONCILE_SCHEDULE = "10 * * * *";
+/** The local hour the prune runs in. */
+const PRUNE_HOUR = 3;
 
 export const KV_PREFIX = "sync.";
 export const STATE_KEY = "sync.state";
@@ -165,10 +169,10 @@ export interface SyncState {
 	burst?: string;
 	/** After a failed DNS lookup for the ban protections, when to try again. */
 	dnsRetryAt?: string;
-	/** True once rows stored before blocklist alerts were left out have been checked and purged. */
-	blocklistPurged?: boolean;
-	/** Where that purge continues. */
-	purgeCursor?: string;
+	/** True once alert rows stored one per alert (0.1.0) have moved into the alert log. */
+	logMigrated?: boolean;
+	/** Whether the metrics sampler was scheduled, as of the last tick. Kept through a wipe. */
+	sampler?: boolean;
 }
 
 /** How many addresses the community blocklist and lists hold, as last counted. */
@@ -185,7 +189,18 @@ export interface Loaded {
 	waiting: string | null;
 	blocklist: BlocklistSnapshot | null;
 	metrics: MetricsState | null;
+	/** Each viewer's visits to the Alerts explorer, by user id. */
+	visits: Record<string, Visit>;
 }
+
+/** A viewer's last visit to the Alerts explorer and the one before it, for "Since last visit". */
+export interface Visit {
+	last: string;
+	previous?: string;
+}
+
+/** Visits are kept under the state's prefix, so the page's one `kv.list` reads them too. */
+export const VISIT_PREFIX = "sync.visit.";
 
 /** What the metrics sampler keeps between runs. */
 export interface MetricsState {
@@ -207,8 +222,13 @@ export interface MetricsState {
 
 export async function loadKv(ctx: PluginContext): Promise<Loaded> {
 	const values = new Map<string, unknown>();
-	for (const entry of await ctx.kv.list(KV_PREFIX)) values.set(entry.key, entry.value);
+	const visits: Record<string, Visit> = {};
+	for (const entry of await ctx.kv.list(KV_PREFIX)) {
+		if (entry.key.startsWith(VISIT_PREFIX)) visits[entry.key.slice(VISIT_PREFIX.length)] = entry.value as Visit;
+		else values.set(entry.key, entry.value);
+	}
 	return {
+		visits,
 		state: (values.get(STATE_KEY) as SyncState | undefined) ?? {},
 		dns: (values.get(DNS_KEY) as DnsCache | undefined) ?? null,
 		waiting: (values.get(WAITING_KEY) as string | undefined) ?? null,
@@ -244,7 +264,7 @@ export async function noteWaiting(ctx: PluginContext, loaded: Loaded, now: Date)
 }
 
 export interface SyncOutcome {
-	step: "forward" | "backfill" | "bans" | "dns" | "wipe" | "idle" | "busy" | "purge";
+	step: "forward" | "backfill" | "bans" | "dns" | "wipe" | "idle" | "busy" | "migrate" | "sampler";
 	ok: boolean;
 	/** Alerts counted for the first time. */
 	counted: number;
@@ -267,6 +287,7 @@ export type SyncMode = "scheduled" | "refresh" | "bans" | "catchup";
  *   hostnames at most, and the cache write: ten. When the lookup leaves
  *   room for the login, the search and the state write, the ban count
  *   follows in the same tick.
+ * - sampler (the metrics settings changed): the schedule or cancel: five.
  * - busy (the lease is held): the read and the claim, and a Refresh or a
  *   ban count scheduled again: three.
  */
@@ -292,21 +313,41 @@ export async function runSync(ctx: PluginContext, now: Date = new Date(), mode: 
 	const dataset = datasetOf(settings);
 	if (state.dataset && state.dataset !== dataset) return await runWipe(ctx, state, now);
 
+	// The metrics sampler follows the settings. A tick that finds the source
+	// or the metrics URLs changed schedules or cancels it, so the change
+	// takes effect without a dashboard visit.
+	const sampler = samplerOn(settings);
+	if (ctx.cron && state.sampler !== undefined && state.sampler !== sampler) {
+		try {
+			if (sampler) await ctx.cron.schedule(METRICS_TASK, { schedule: settings.syncInterval });
+			else await ctx.cron.cancel(METRICS_TASK);
+		} catch {
+			// Tried again on the next tick: `sampler` is only stored once it worked.
+			await writeState(ctx, { ...state, dataset });
+			return { step: "sampler", ok: false, counted: 0 };
+		}
+		await writeState(ctx, { ...state, dataset, sampler });
+		return { step: "sampler", ok: true, counted: 0 };
+	}
+
 	const source = buildSource(ctx, settings, state.skewMs, { now: () => now });
 	if (!source) return await fail(ctx, state, "idle", now, failure("noNetwork").problem);
 
-	state = { ...state, dataset, gaps: clipGaps(state, settings, now) };
+	// A state from before 0.1.1 has no `sampler`: the schedule from activation or a dashboard visit stands.
+	state = { ...state, dataset, sampler, gaps: clipGaps(state, settings, now) };
 
-	// Rows stored before blocklist alerts were left out of the searches come
-	// out first, a batch per tick, so no chart or count shows them.
-	if (state.head && !state.blocklistPurged) return await runPurge(ctx, state, now);
+	// Then rows stored one per alert move into the log, a batch per tick.
+	// The move runs in its own chain of one-shot runs. A scheduled tick that
+	// finds the chain going does its usual work, so forward reads and ban
+	// counts go on meanwhile.
+	if (state.head && !state.logMigrated && (mode === "catchup" || !chainPending(state, now))) return await runMigrate(ctx, state, now, mode, task);
 
 	if (mode === "bans") return await runBans(ctx, source, settings, state, now);
 
 	// The first step opens one gap over the whole retention window and
 	// reads its newest end.
 	if (!state.head) {
-		const first = { ...state, blocklistPurged: true, head: now.toISOString(), gaps: [{ from: floorOf(settings, now), to: now.toISOString() }] };
+		const first = { ...state, logMigrated: true, head: now.toISOString(), gaps: [{ from: floorOf(settings, now), to: now.toISOString() }] };
 		return await runBackfill(ctx, source, settings, first, now, mode, task);
 	}
 
@@ -369,6 +410,16 @@ export function clipGaps(state: SyncState, settings: Pick<CrowdSecSettings, "ret
 	return gaps.sort((a, b) => (a.to < b.to ? 1 : a.to > b.to ? -1 : 0));
 }
 
+/**
+ * Demo data costs no bridge call per search, so a demo step reads far more
+ * than a LAPI one: the whole retention window fills in a few ticks.
+ */
+export const DEMO_BATCH = 7000;
+
+function batchOf(settings: CrowdSecSettings, state: SyncState): number {
+	return settings.source === "demo" ? DEMO_BATCH : (state.batch ?? DEFAULT_BATCH);
+}
+
 /** The batch for the next try: half after an answer over the 8 MiB cap, down to `MIN_BATCH`. */
 export function batchAfter(batch: number, problem: string): number {
 	return problem === "tooLarge" ? Math.max(MIN_BATCH, Math.floor(batch / 2)) : batch;
@@ -422,8 +473,8 @@ async function step(
 	}
 
 	const days = daysStore(ctx);
-	const alerts = alertsStore(ctx);
-	if (!days || !alerts) return { ok: false, problem: failure("storageUnavailable").problem, state: measured };
+	const log = logStore(ctx);
+	if (!days || !log) return { ok: false, problem: failure("storageUnavailable").problem, state: measured };
 
 	const dayIds = [...new Set(rows.map((row) => row.day))];
 	const existing = dayIds.length > 0 ? await days.getMany(dayIds) : new Map<string, DayRow>();
@@ -442,7 +493,8 @@ async function step(
 	}
 
 	if (fresh.length > 0) {
-		await alerts.putMany(fresh.map((row) => ({ id: String(row.id), data: row })));
+		// One chunk of the alert log per local day, written without a read.
+		await log.putMany(chunksOf(fresh, now));
 		await days.putMany([...touched.values()].map((day) => ({ id: day.date, data: trimDay(day) })));
 	}
 
@@ -490,7 +542,7 @@ async function runForward(ctx: PluginContext, source: Source, settings: CrowdSec
 		return await runBackfill(ctx, source, settings, { ...state, head: now.toISOString(), gaps }, now, "refresh");
 	}
 	const since = new Date(Math.max(Math.min(head - FORWARD_OVERLAP_MS, now.getTime() - FORWARD_REACH_MS), Date.parse(floorOf(settings, now))));
-	const batch = state.batch ?? DEFAULT_BATCH;
+	const batch = batchOf(settings, state);
 	const res = await step(ctx, source, settings, state, now, batch, since, undefined);
 	if (!res.ok) return await fail(ctx, res.state, "forward", now, res.problem);
 
@@ -523,7 +575,7 @@ async function runBackfill(
 	if (!gap) return await runForward(ctx, source, settings, state, now);
 	const to = Date.parse(gap.to);
 	const from = Math.max(Date.parse(gap.from), to - MAX_SPAN_MS);
-	const batch = state.batch ?? DEFAULT_BATCH;
+	const batch = batchOf(settings, state);
 
 	const res = await step(ctx, source, settings, state, now, batch, new Date(from), new Date(to));
 	if (!res.ok) {
@@ -576,12 +628,17 @@ async function runBackfill(
  * run continues its chain. A scheduled one starts a chain when none is
  * pending. The lease keeps a chained run and the sync apart.
  */
+/** Is a chained one-shot run due, or only just overdue? */
+function chainPending(state: SyncState, now: Date): boolean {
+	return Boolean(state.chain && now.getTime() < Date.parse(state.chain.at) + CATCH_UP_PENDING_MS);
+}
+
 function chainFor(state: SyncState, now: Date, mode: SyncMode, task: string | undefined, cron: boolean) {
 	if (!cron || (state.gaps ?? []).length === 0) return null;
 	const at = new Date(now.getTime() + CATCH_UP_DELAY_MS).toISOString();
 	if (mode === "catchup") return { next: task === CATCH_UP_TASKS[0] ? CATCH_UP_TASKS[1] : CATCH_UP_TASKS[0], at };
 	if (mode !== "scheduled") return null;
-	if (state.chain && now.getTime() < Date.parse(state.chain.at) + CATCH_UP_PENDING_MS) return null;
+	if (chainPending(state, now)) return null;
 	return { next: state.chain?.next ?? CATCH_UP_TASKS[0], at };
 }
 
@@ -649,68 +706,10 @@ async function busy(ctx: PluginContext, mode: SyncMode, now: Date): Promise<Sync
 	return { step: "busy", ok: true, counted: 0 };
 }
 
-/**
- * Take stored blocklist alerts out, once. Before the searches left them
- * out, the sync could store community blocklist alerts: each one with an
- * empty source and thousands of decisions, counted into its day as bans.
- * They are found by their empty `ip`, an indexed field, deleted, and taken
- * back out of their day rows and hourly buckets. Their ids stay counted, so
- * no later read counts them again. The active ban count is cleared and read
- * again, since it counted blocklist bans too.
- *
- * Calls: the lease and the settings (three), one query, days.getMany,
- * alerts.deleteMany, days.putMany, the state write and, when done, the ban
- * count's schedule: nine.
- */
-async function runPurge(ctx: PluginContext, state: SyncState, now: Date): Promise<SyncOutcome> {
-	const alerts = alertsStore(ctx);
-	const days = daysStore(ctx);
-	if (!alerts || !days) return await fail(ctx, state, "purge", now, failure("storageUnavailable").problem);
-	const page = await alerts.query({ where: { ip: "" }, limit: ID_BATCH, ...(state.purgeCursor ? { cursor: state.purgeCursor } : {}) });
-	const found = page.items.filter((item) => isBlocklistRow(item.data));
-	let hours = { ...(state.hours ?? {}) };
-	if (found.length > 0) {
-		const ids = [...new Set(found.map((item) => item.data.day))];
-		const stored = await days.getMany(ids);
-		const touched = new Map<string, DayRow>();
-		for (const { data } of found) {
-			const day = touched.get(data.day) ?? (stored.has(data.day) ? structuredClone(stored.get(data.day)!) : null);
-			if (day && uncountFrom(day, data)) touched.set(data.day, day);
-			hours = withoutHour(hours, data);
-		}
-		await alerts.deleteMany(found.map((item) => item.id));
-		if (touched.size > 0) await days.putMany([...touched.values()].map((day) => ({ id: day.date, data: day })));
-	}
-	const more = page.hasMore && Boolean(page.cursor);
-	await writeState(ctx, {
-		...state,
-		hours,
-		purgeCursor: more ? page.cursor : undefined,
-		...(!more && { blocklistPurged: true, active: undefined }),
-	});
-	if (!more && ctx.cron) await ctx.cron.schedule(BANS_TASK, { schedule: now.toISOString() });
-	return { step: "purge", ok: true, counted: -found.length };
-}
 
-function withoutHour(hours: Record<string, HourBucket>, row: AlertRow): Record<string, HourBucket> {
-	const key = hourKey(Date.parse(row.startedAt));
-	const bucket = hours[key];
-	if (!bucket) return hours;
-	const scenarios = { ...bucket.scenarios };
-	if (row.scenario && scenarios[row.scenario] !== undefined) {
-		if (scenarios[row.scenario]! <= 1) delete scenarios[row.scenario];
-		else scenarios[row.scenario]!--;
-	}
-	return {
-		...hours,
-		[key]: {
-			...bucket,
-			alerts: Math.max(0, bucket.alerts - 1),
-			...(bucket.bans !== undefined && { bans: Math.max(0, bucket.bans - (row.bans ?? 0)) }),
-			[row.kind]: Math.max(0, bucket[row.kind] - 1),
-			scenarios,
-		},
-	};
+/** Does the metrics sampler run: a LAPI source with a metrics URL. Demo traffic is worked out when read. */
+export function samplerOn(settings: Pick<CrowdSecSettings, "source" | "engineMetricsUrl" | "firewallMetricsUrl">): boolean {
+	return settings.source === "lapi" && Boolean(settings.engineMetricsUrl || settings.firewallMetricsUrl);
 }
 
 /** Are the traffic charts on: a metrics URL set, or demo data? */
@@ -734,11 +733,10 @@ export async function runMetrics(ctx: PluginContext, now: Date = new Date()): Pr
 	const versioned = await ctx.kv.getVersioned<MetricsState>(METRICS_KEY);
 	const prev = versioned?.value ?? null;
 	const result = await readSettings(ctx);
-	if (!result.ok || !metricsOn(result.settings)) return { ok: false };
+	if (!result.ok || !samplerOn(result.settings)) return { ok: false };
 	const settings = result.settings;
 
 	const read = async (kind: "engine" | "firewall", url: string): Promise<{ series: Series[] | null; status?: MetricsState["engine"] }> => {
-		if (settings.source === "demo") return { series: parsePrometheus(demoMetricsText(kind, now)), status: { ok: true } };
 		if (!url || !ctx.http) return { series: null };
 		const http = ctx.http;
 		const res = await fetchMetrics((u, init) => http.fetch(u, init), url);
@@ -791,6 +789,90 @@ export async function runMetrics(ctx: PluginContext, now: Date = new Date()): Pr
 }
 
 /**
+ * Move alert rows stored one per alert, as 0.1.0 kept them, into the alert
+ * log: 98 per run, grouped into one chunk per local day. While rows remain,
+ * each run schedules the next a little under a minute later, as backfill
+ * does. Calls: the lease and the settings (three), the query, the chunk
+ * write, the delete, the state write and the next run: eight.
+ */
+async function runMigrate(ctx: PluginContext, state: SyncState, now: Date, mode: SyncMode, task?: string): Promise<SyncOutcome> {
+	const alerts = alertsStore(ctx);
+	const log = logStore(ctx);
+	if (!alerts || !log) {
+		await writeState(ctx, { ...state, logMigrated: true });
+		return { step: "migrate", ok: true, counted: 0 };
+	}
+	const page = await alerts.query({ limit: ID_BATCH });
+	const rows = page.items.map((item) => item.data).filter((row) => !isBlocklistRow(row) && typeof row.day === "string");
+	if (rows.length > 0) await log.putMany(chunksOf(rows, now));
+	if (page.items.length > 0) await alerts.deleteMany(page.items.map((item) => item.id));
+	const more = page.hasMore || page.items.length === ID_BATCH;
+	const at = new Date(now.getTime() + CATCH_UP_DELAY_MS).toISOString();
+	const chain = more && ctx.cron ? { next: mode === "catchup" && task === CATCH_UP_TASKS[0] ? CATCH_UP_TASKS[1] : CATCH_UP_TASKS[0], at } : null;
+	await writeState(ctx, { ...state, logMigrated: !more, ...(chain && { chain }) });
+	if (chain) await ctx.cron!.schedule(chain.next, { schedule: chain.at });
+	return { step: "migrate", ok: true, counted: 0 };
+}
+
+/**
+ * The hourly maintenance run: at 3 am local time the prune, otherwise the
+ * merge of one closed day's chunks of the alert log.
+ */
+export async function runMaintenance(ctx: PluginContext, now: Date = new Date()): Promise<void> {
+	const settings = settingsOf(await readSettings(ctx));
+	const hour = Number(new Intl.DateTimeFormat("en-US", { timeZone: settings.timeZone, hour: "2-digit", hourCycle: "h23" }).format(now));
+	if (hour === PRUNE_HOUR) await runReconcile(ctx, settings, now);
+	else await runCompact(ctx, settings.timeZone, now);
+}
+
+/**
+ * Merge the chunks of closed days into parts of at most `PART_SIZE`
+ * alerts, so a day reads as one row or a few. One run takes the oldest
+ * hundred chunks, whichever days they belong to, with those days' parts.
+ * Merging is incremental: chunks a run did not read, or a sync step wrote
+ * meanwhile, are merged by a later run, and only the chunks read here are
+ * deleted.
+ *
+ * Calls: settings.list (before), the chunk query, the parts query (two
+ * when the days hold over a hundred parts), the parts' write and the
+ * deletes (two at most): seven.
+ */
+export async function runCompact(ctx: PluginContext, zone: string, now: Date = new Date()): Promise<{ days: string[]; merged: number }> {
+	const log = logStore(ctx);
+	if (!log) return { days: [], merged: 0 };
+	const today = localDay(now, zone);
+	const page = await log.query({ where: { part: "chunk", day: { lt: today } }, orderBy: { day: "asc" }, limit: BIND_LIMIT });
+	if (page.items.length === 0) return { days: [], merged: 0 };
+	let chunks = page.items;
+	let days = [...new Set(chunks.map((c) => c.data.day))].sort();
+	let parts = await log.query({ where: { part: "part", day: { gte: days[0]!, lte: days[days.length - 1]! } }, limit: BIND_LIMIT });
+	if (parts.hasMore) {
+		// Too many parts to hold every day's: merge the first day alone.
+		days = [days[0]!];
+		chunks = chunks.filter((c) => c.data.day === days[0]);
+		parts = await log.query({ where: { part: "part", day: days[0]! }, limit: BIND_LIMIT });
+	}
+	const merged: Array<{ id: string; data: LogRow }> = [];
+	const stale: string[] = chunks.map((c) => c.id);
+	for (const day of days) {
+		const own = parts.items.filter((p) => p.data.day === day);
+		const next = partsOf(day, flatten([...own, ...chunks.filter((c) => c.data.day === day)].map((item) => item.data as LogRow)), now);
+		merged.push(...next);
+		const keep = new Set(next.map((m) => m.id));
+		stale.push(...own.map((p) => p.id).filter((id) => !keep.has(id)));
+	}
+	await log.putMany(merged);
+	for (const ids of chunk(stale)) await log.deleteMany(ids);
+	return { days, merged: chunks.length };
+}
+
+/** A community blocklist size for demo data: about 24,000 addresses, a little different each day. */
+export function demoBlocklistCount(now: Date): number {
+	const day = Math.floor(now.getTime() / 86_400_000);
+	return 23_400 + ((day * 7919) % 1_300);
+}
+
+/**
  * Count the community blocklist and lists, once a day in a task of its own.
  * The answer is several megabytes (about 3.5 MB for 24,000 addresses), so
  * only the count is kept, with its time. An answer over the 8 MiB cap is
@@ -800,7 +882,12 @@ export async function runMetrics(ctx: PluginContext, now: Date = new Date()): Pr
  */
 export async function runBlocklistCount(ctx: PluginContext, now: Date = new Date()): Promise<BlocklistSnapshot | null> {
 	const result = await readSettings(ctx);
-	if (!result.ok || result.settings.source !== "lapi") return null;
+	if (!result.ok) return null;
+	if (result.settings.source === "demo") {
+		const snapshot = { at: now.toISOString(), addresses: demoBlocklistCount(now) };
+		await ctx.kv.set(BLOCKLIST_KEY, snapshot);
+		return snapshot;
+	}
 	const source = buildSource(ctx, result.settings, undefined, { now: () => now });
 	if (!source) return null;
 	const addresses = new Set<string>();
@@ -826,13 +913,14 @@ export async function runBlocklistCount(ctx: PluginContext, now: Date = new Date
 
 /**
  * Clear the store after the dataset changed, in bounded batches: a query
- * and a delete per batch, six calls with the lease, the settings and the
- * state write around them. Until it is done, every tick resumes it.
+ * and a delete per batch, five calls with the lease, the settings, the
+ * state write and the blocklist count's delete around them. Until it is done, every tick resumes it.
  */
 async function runWipe(ctx: PluginContext, state: SyncState, now: Date): Promise<SyncOutcome> {
-	let calls = 6;
+	// Ten less the lease, the settings, the state write and the blocklist count's delete.
+	let calls = 5;
 	let finished = true;
-	for (const store of [alertsStore(ctx), daysStore(ctx), trafficStore(ctx)]) {
+	for (const store of [alertsStore(ctx), daysStore(ctx), trafficStore(ctx), logStore(ctx)]) {
 		if (!store) continue;
 		let more = true;
 		while (more && calls >= 2) {
@@ -849,8 +937,10 @@ async function runWipe(ctx: PluginContext, state: SyncState, now: Date): Promise
 			break;
 		}
 	}
+	// The blocklist count belongs to the old source: the next dashboard visit asks for a new one.
+	if (finished) await ctx.kv.delete(BLOCKLIST_KEY);
 	// `dataset` stays until the store is empty, so the next tick resumes.
-	await writeState(ctx, finished ? { lastSync: now.toISOString() } : state);
+	await writeState(ctx, finished ? { lastSync: now.toISOString(), ...(state.sampler !== undefined && { sampler: state.sampler }) } : state);
 	return { step: "wipe", ok: true, counted: 0 };
 }
 
@@ -868,10 +958,11 @@ export async function runReconcile(
 	let deleted = 0;
 	let more = false;
 	let batches = 4;
-	const passes: Array<[ReturnType<typeof alertsStore> | ReturnType<typeof daysStore> | ReturnType<typeof trafficStore>, Record<string, unknown>]> = [
+	const passes: Array<[ReturnType<typeof alertsStore> | ReturnType<typeof daysStore> | ReturnType<typeof trafficStore> | ReturnType<typeof logStore>, Record<string, unknown>]> = [
 		[alertsStore(ctx), { startedAt: { lt: cutoff.toISOString() } }],
 		[daysStore(ctx), { date: { lt: localDay(cutoff, settings.timeZone) } }],
 		[trafficStore(ctx), { date: { lt: localDay(cutoff, settings.timeZone) } }],
+		[logStore(ctx), { day: { lt: localDay(cutoff, settings.timeZone) } }],
 	];
 	for (const [store, where] of passes) {
 		if (!store) continue;

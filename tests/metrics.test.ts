@@ -258,7 +258,7 @@ describe("demo data", () => {
 
 describe("traffic_summary", () => {
 	it("answers in its declared schema, within the budget", async () => {
-		host = await newHost("demo");
+		host = await newHost("lapi", { engineMetricsUrl: ENGINE, firewallMetricsUrl: FIREWALL });
 		const today = new Date().toISOString().slice(0, 10);
 		await host.fixtures.plugin.storage("traffic", today, { date: today, counters: { "drop.packets.community": 100, "drop.bytes.community": 6400, "proc.packets": 1000, "as.reqs": 50, "as.blocks": 2 }, samples: 4, updatedAt: "" });
 		await host.fixtures.plugin.kv(METRICS_KEY, { source: "x", last: {}, at: "", since: "2026-01-01T00:00:00Z", hours: {}, gauges: { bansByOrigin: { community: 9, detections: 1, manual: 0, other: 0 }, communityReasons: {} } });
@@ -272,5 +272,15 @@ describe("traffic_summary", () => {
 		const parsed = z.fromJSONSchema({ ...tool.outputSchema }).safeParse(data);
 		expect(parsed.error?.issues ?? []).toEqual([]);
 		expect(data).toMatchObject({ enabled: true, discarded: { packets: 100 }, share: 0.1, activeByOrigin: { community: 9 } });
+	});
+
+	it("gives demo data a week of history rather than one sample's difference", async () => {
+		host = await newHost("demo");
+		const response = await host.actions.routes.request(TOOL_ROUTES.traffic, { body: { days: 7 }, user: ADMIN, headers: { "X-EmDash-Request": "1" } });
+		const data = ((await response.json()) as { data: { enabled: boolean; window: { partial: boolean }; discarded: { packets: number } } }).data;
+		expect(data.enabled).toBe(true);
+		expect(data.window.partial).toBe(false);
+		// About 150 packets an hour in the demo counters: a week is thousands, never a handful.
+		expect(data.discarded.packets).toBeGreaterThan(10_000);
 	});
 });

@@ -34,6 +34,8 @@ export interface RawSource {
 export interface RawAlert {
 	id?: number;
 	uuid?: string;
+	/** The CrowdSec agent (watcher machine) that raised the alert. */
+	machine_id?: string;
 	scenario?: string;
 	kind?: string;
 	message?: string;

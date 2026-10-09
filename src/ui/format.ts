@@ -102,6 +102,25 @@ export function formatTime(iso: string, locale: string | undefined, zone: string
 	}
 }
 
+/**
+ * A time for a table cell, short enough not to wrap: "9 Oct 11:54", with
+ * the year only when it is not the current one ("9 Oct 2025 11:54"). In
+ * the configured zone, 24-hour.
+ */
+export function formatCompact(at: number | string, locale: string | undefined, zone: string, now: Date): string {
+	const ms = typeof at === "number" ? at : Date.parse(at);
+	if (Number.isNaN(ms)) return String(at);
+	try {
+		const lang = langOf(locale) === "en" ? "en-AU" : langOf(locale);
+		const year = (v: number) => new Intl.DateTimeFormat("en", { year: "numeric", timeZone: zone }).format(v);
+		const date = new Intl.DateTimeFormat(lang, { day: "numeric", month: "short", ...(year(ms) !== year(now.getTime()) && { year: "numeric" }), timeZone: zone }).format(ms);
+		const time = new Intl.DateTimeFormat(lang, { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: zone }).format(ms);
+		return `${date} ${time}`;
+	} catch {
+		return new Date(ms).toISOString().slice(0, 16).replace("T", " ");
+	}
+}
+
 /** A day key as a short chart label: "27 Sept". */
 export function formatShortDay(day: string, locale?: string): string {
 	const ms = Date.parse(`${day}T00:00:00.000Z`);
@@ -160,4 +179,19 @@ export function countryName(locale: string | undefined): (code: string) => strin
 			return code;
 		}
 	};
+}
+
+/** Generated machine ids run to 48 characters: past this, a name shows its first 8 and an ellipsis. */
+const LONG_ID = 20;
+
+/**
+ * An engine as people read it: its name from the Engine names setting, or
+ * its machine id, cut to the first 8 characters when it is a long
+ * generated one. The detail view shows the whole id.
+ */
+export function engineLabel(id: string, names: Record<string, string> | undefined, lang: Lang): string {
+	if (!id) return t(lang, "unknown");
+	const named = names?.[id];
+	if (named) return named;
+	return id.length > LONG_ID ? `${id.slice(0, 8)}…` : id;
 }

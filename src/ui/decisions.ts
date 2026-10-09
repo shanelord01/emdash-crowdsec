@@ -45,7 +45,7 @@ import {
 	textInput,
 	type SecurityBlock,
 } from "./blocks.js";
-import { countryName, formatAge, formatCount, formatRemaining, formatTime } from "./format.js";
+import { countryName, formatAge, formatCompact, formatCount, formatRemaining } from "./format.js";
 import { ALERTS_PATH, BAN_CONFIRM, BAN_REVIEW, DECISIONS_REFRESH, DECISIONS_REMOVE, DECISIONS_TABLE, SECURITY_PATH } from "./ids.js";
 
 export const DECISION_ROWS = 50;
@@ -244,12 +244,11 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 			pageActionId: `${DECISIONS_TABLE}|${view.dir}`,
 			columns: [
 				{ key: "value", label: t(lang, "colAddress"), format: "code" },
-				{ key: "scenario", label: t(lang, "colScenario"), format: "code" },
+				{ key: "scenario", label: t(lang, "colScenario"), format: "text" },
 				{ key: "type", label: t(lang, "colType"), format: "badge" },
 				{ key: "origin", label: t(lang, "colOrigin"), format: "text" },
 				{ key: "expires", label: t(lang, "colRemaining"), format: "text", sortable: true },
-				{ key: "country", label: t(lang, "colCountry"), format: "text" },
-				{ key: "as", label: t(lang, "colAsName"), format: "text" },
+				{ key: "network", label: t(lang, "colNetwork"), format: "text" },
 				...(input.canWrite ? [{ key: "remove", label: "", format: "element" as const }] : []),
 			],
 			rows: rows.map((row) => ({
@@ -257,9 +256,8 @@ function decisionTable(all: DecisionRow[], input: DecisionsInput, lang: Lang): S
 				scenario: row.scenario,
 				type: row.type,
 				origin: row.origin,
-				expires: `${formatRemaining(row.remaining, lang)} (${formatTime(row.expires, lang, input.zone)})`,
-				country: country(row.country),
-				as: row.asName,
+				expires: `${formatRemaining(row.remaining, lang)} (${formatCompact(row.expires, lang, input.zone, input.now)})`,
+				network: [country(row.country), row.asName].filter(Boolean).join(" · "),
 				...(input.canWrite && {
 					// Every button an action id of its own: the row's decision id rides in it too.
 					remove: button(`${DECISIONS_REMOVE}|${view.dir}|${row.id}`, t(lang, "remove"), {
@@ -296,33 +294,39 @@ function banBlocks(p: ProtectedView, lang: Lang): SecurityBlock[] {
 		context(
 			[t(lang, "protectedBuiltIn"), ...(p.invalidSetting.length > 0 ? [t(lang, "protectedInvalid", { entries: p.invalidSetting.join(", ") })] : [])].join(" "),
 		),
-		form(
-			[
-				textInput("value", t(lang, "fieldAddress"), { placeholder: "203.0.113.7" }),
-				select(
-					"duration",
-					t(lang, "fieldDuration"),
-					Object.keys(BAN_DURATIONS).map((value) => ({ value, label: t(lang, `duration_${value}` as "duration_4h") })),
-					{ initialValue: "4h" },
-				),
-				select(
-					"type",
-					t(lang, "fieldType"),
-					[
-						{ value: "ban", label: t(lang, "typeBan") },
-						{ value: "captcha", label: t(lang, "typeCaptcha") },
-					],
-					{ initialValue: "ban" },
-				),
-				textInput("note", t(lang, "fieldNote"), { placeholder: t(lang, "fieldNoteHint") }),
-			],
-			{ label: t(lang, "reviewBan"), actionId: BAN_REVIEW },
-			{ blockId: "cs:ban:form" },
-		),
+		banForm(lang, BAN_REVIEW),
 	];
 }
 
-function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: boolean }, lang: Lang): SecurityBlock[] {
+/** The ban form: the address, unless it is already known, the duration, the type and a note. */
+export function banForm(lang: Lang, actionId: string, address?: string): SecurityBlock {
+	return form(
+		[
+			...(address ? [] : [textInput("value", t(lang, "fieldAddress"), { placeholder: "203.0.113.7" })]),
+			select(
+				"duration",
+				t(lang, "fieldDuration"),
+				Object.keys(BAN_DURATIONS).map((value) => ({ value, label: t(lang, `duration_${value}` as "duration_4h") })),
+				{ initialValue: "4h" },
+			),
+			select(
+				"type",
+				t(lang, "fieldType"),
+				[
+					{ value: "ban", label: t(lang, "typeBan") },
+					{ value: "captcha", label: t(lang, "typeCaptcha") },
+				],
+				{ initialValue: "ban" },
+			),
+			textInput("note", t(lang, "fieldNote"), { placeholder: t(lang, "fieldNoteHint") }),
+		],
+		{ label: address ? t(lang, "reviewBanOf", { value: address }) : t(lang, "reviewBan"), actionId },
+		{ blockId: address ? "cs:x:ban" : "cs:ban:form" },
+	);
+}
+
+/** A reviewed ban and its confirmed Ban button. */
+export function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: boolean }, lang: Lang, confirmId: string = BAN_CONFIRM): SecurityBlock[] {
 	const { check, input } = review;
 	const what = t(lang, "reviewWhat", {
 		type: input.type === "captcha" ? t(lang, "typeCaptcha") : t(lang, "typeBan"),
@@ -333,12 +337,12 @@ function reviewBlocks(review: { check: BanCheck; input: BanInput; blocklisted?: 
 	return [
 		banner({ title: t(lang, "reviewTitle"), description: `${what} ${own}`, variant: check.ownChecked ? "default" : "alert" }),
 		section(t(lang, "reviewChecks"), {
-			accessory: button(BAN_CONFIRM, t(lang, "banNow"), {
+			accessory: button(confirmId, t(lang, "banNow"), {
 				style: "danger",
 				value: { value: check.value, duration: input.duration, type: input.type, note: input.note },
 				confirm: confirmDialog(t(lang, "banConfirmTitle"), `${what} ${own}`, t(lang, "banNow"), t(lang, "cancel")),
 			}),
-			blockId: "cs:ban:review",
+			blockId: confirmId === BAN_CONFIRM ? "cs:ban:review" : "cs:x:review",
 		}),
 	];
 }

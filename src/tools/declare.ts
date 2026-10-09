@@ -19,7 +19,9 @@ import type { SandboxedMcpTool } from "emdash/plugin";
 import { z } from "zod";
 
 import { BAN_DURATIONS, MAX_NOTE } from "../write/actions.js";
-import { MAX_DECISIONS, MAX_TOP, TOOL_ROUTES } from "./load.js";
+import { BEHAVIOURS } from "../explorer/behaviour.js";
+import { DIMENSIONS } from "../explorer/model.js";
+import { EXPLORER_PERIODS, MAX_DECISIONS, MAX_GROUPS, MAX_TOP, TOOL_ROUTES } from "./load.js";
 
 export function mcpTools(): Record<string, SandboxedMcpTool> {
 	const day = z.string().describe("A day in the plugin's Time zone setting, YYYY-MM-DD.");
@@ -182,6 +184,66 @@ export function mcpTools(): Record<string, SandboxedMcpTool> {
 				appsec: z.object({ inspected: z.number(), blocked: z.number() }),
 				challenge: z.object({ requested: z.number(), submitted: z.number(), accepted: z.number(), rejected: z.number(), exempt: z.number() }),
 				activeByOrigin: origins.nullable().describe("Active decisions by origin now, from the security engine."),
+			}),
+			destructive: false,
+		},
+		alerts_explorer: {
+			description:
+				"Explore the CrowdSec alerts stored for this site, as the CrowdSec alerts page does: one period, optionally one kind, filtered by address or CIDR range, country, scenario, behaviour, AS organisation, target path or the CrowdSec agent (engine) that raised them. " +
+				"Answers the matching total, up to two breakdowns (the top five values with their share and the rest as other), and the alerts grouped by source address, latest first, with the local hints the page shows: bannedUntil when a decision is still running, and seenBefore when the address had alerts on days before the period. " +
+				"From the plugin's stored alert log (lastSync), never from CrowdSec's cloud, so there is no reputation data. partial is true when the period holds more stored alerts than one call reads: pick a shorter period. Use ip_alerts for one address's live alerts.",
+			route: TOOL_ROUTES.explorer,
+			input: z.object({
+				period: z.enum(EXPLORER_PERIODS).optional().describe("1h, 24h, 3d, 7d or 30d back from now (7d and 30d are local days, today included), or all for everything kept. Default 24h."),
+				kind: z.enum(["waf", "bot", "behaviour", "manual"]).optional().describe("Only alerts of this kind."),
+				address: address.optional().describe("Only alerts from this address, or from addresses inside this CIDR range."),
+				country: z.string().length(2).optional().describe("ISO 3166 country code."),
+				scenario: z.string().max(200).optional().describe("A scenario name, such as crowdsecurity/http-probing."),
+				behaviour: z.enum(BEHAVIOURS).optional().describe("The behaviour the plugin reads from the scenario name."),
+				asName: z.string().max(200).optional().describe("An AS organisation, as the alerts name it."),
+				path: z.string().max(200).optional().describe("A targeted path, such as /.env."),
+				engine: z.string().max(200).optional().describe("Only alerts raised by this CrowdSec agent: its machine_id, as groups[].engines[].id gives it."),
+				breakdowns: z.array(z.enum(DIMENSIONS)).max(2).optional().describe("Up to two dimensions to break the alerts down by. Default ip and behaviour."),
+				limit: z.number().int().min(1).max(MAX_GROUPS).optional().describe(`Address groups per page, 1 to ${MAX_GROUPS}. Default 20.`),
+				page: z.number().int().min(0).optional().describe("The page of address groups, from 0."),
+				until: z.string().optional().describe("For a page after the first: the period.until the first page answered with, so the period does not move between pages."),
+			}),
+			output: z.object({
+				period: z.object({ name: z.enum(EXPLORER_PERIODS), since: z.string(), until: z.string() }),
+				total: z.number(),
+				partial: z.boolean(),
+				breakdowns: z.array(
+					z.object({
+						dimension: z.enum(DIMENSIONS),
+						total: z.number(),
+						top: z.array(z.object({ value: z.string(), alerts: z.number(), share: z.number().describe("0 to 1.") })),
+						other: z.number(),
+					}),
+				),
+				groups: z.object({
+					total: z.number(),
+					nextPage: z.number().nullable(),
+					items: z.array(
+						z.object({
+							address: z.string(),
+							country: z.string(),
+							asName: z.string(),
+							alerts: z.number(),
+							firstSeen: z.string(),
+							lastSeen: z.string(),
+							wafAlerts: z.number(),
+							scenarios: ranking,
+							paths: ranking,
+							decisions: z.number(),
+							bannedUntil: z.string().nullable(),
+							seenBefore: z.boolean(),
+							engines: z
+								.array(z.object({ id: z.string().describe("The agent's machine_id."), name: z.string().describe("Its name from the Engine names setting, or the id.") }))
+								.describe("The CrowdSec agents that raised the address's alerts, most first. Empty for alerts stored before 0.1.1."),
+						}),
+					),
+				}),
+				lastSync,
 			}),
 			destructive: false,
 		},

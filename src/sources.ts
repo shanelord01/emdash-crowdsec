@@ -75,24 +75,43 @@ const SCENARIOS: DemoScenario[] = [
 
 const TOTAL_WEIGHT = SCENARIOS.reduce((sum, s) => sum + s.weight, 0);
 
+/**
+ * Documentation-range addresses (RFC 5737, RFC 3849) with invented network
+ * names and documentation AS numbers (RFC 5398), so no real company appears.
+ */
 const SOURCES = [
-	["203.0.113.10", "NL", "GOOGLE-CLOUD-PLATFORM", "396982"],
-	["203.0.113.24", "US", "AMAZON-02", "16509"],
-	["203.0.113.37", "DE", "Hetzner Online GmbH", "24940"],
-	["203.0.113.51", "CN", "Chinanet", "4134"],
-	["203.0.113.66", "SG", "DIGITALOCEAN-ASN", "14061"],
-	["203.0.113.80", "RU", "OOO Network of data-centers Selectel", "49505"],
-	["198.51.100.7", "US", "MICROSOFT-CORP-MSN-AS-BLOCK", "8075"],
-	["198.51.100.19", "FR", "OVH SAS", "16276"],
-	["198.51.100.42", "BR", "Claro NXT Telecomunicacoes Ltda", "28573"],
-	["198.51.100.88", "IN", "Reliance Jio Infocomm Limited", "55836"],
-	["198.51.100.120", "VN", "VNPT Corp", "45899"],
-	["192.0.2.15", "GB", "Cyberzone S.A.", "209854"],
-	["192.0.2.33", "AU", "Telstra Limited", "1221"],
-	["192.0.2.78", "KR", "Korea Telecom", "4766"],
-	["2001:db8::17", "US", "CLOUDFLARENET", "13335"],
-	["2001:db8:4::2a", "DE", "Hetzner Online GmbH", "24940"],
+	["203.0.113.10", "NL", "Example Cloud Platform", "64496"],
+	["203.0.113.24", "US", "Sample Web Services", "64497"],
+	["203.0.113.37", "DE", "Placeholder Hosting GmbH", "64498"],
+	["203.0.113.51", "CN", "Demo Telecom Backbone", "64499"],
+	["203.0.113.66", "SG", "Fictional Droplets Pte", "64500"],
+	["203.0.113.80", "RU", "Imaginary Datacentres", "64501"],
+	["198.51.100.7", "US", "Pretend Networks Inc", "64502"],
+	["198.51.100.19", "FR", "Invented Servers SAS", "64503"],
+	["198.51.100.42", "BR", "Exemplo Telecom Ltda", "64504"],
+	["198.51.100.88", "IN", "Sample Mobile Broadband", "64505"],
+	["198.51.100.120", "VN", "Mock Internet Corp", "64506"],
+	["192.0.2.15", "GB", "Testbed Transit Ltd", "64507"],
+	["192.0.2.33", "AU", "Example Broadband Pty Ltd", "64508"],
+	["192.0.2.78", "KR", "Demo Fibre Co", "64509"],
+	["2001:db8::17", "US", "Placeholder Edge Network", "64510"],
+	["2001:db8:4::2a", "DE", "Placeholder Hosting GmbH", "64498"],
 ] as const;
+
+/**
+ * Three invented CrowdSec agents reporting to the demo LAPI, as a central
+ * LAPI hears from several hosts. The third has a long generated id, as
+ * `cscli machines add --auto` makes, so the shortened form shows too.
+ */
+export const DEMO_ENGINES = ["edge-01", "web-02", "7f3c9a1e2b8d4c6fa0e5b9d2c4f81a37Qx2LmN8pRt5VwZ"] as const;
+
+const AGENTS = [
+	"Mozilla/5.0 (compatible; ExampleScanner/1.0)",
+	"python-requests/2.32.3",
+	"curl/8.9.1",
+	"Go-http-client/1.1",
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+];
 
 const PATHS = [
 	"/.env",
@@ -153,10 +172,12 @@ export function demoHour(hour: number, now: Date): RawAlert[] {
 		if (created > now.getTime()) continue;
 		const id = hour * PER_HOUR + i;
 		const captcha = scenario.ban && rng() < 0.1;
+		const machine = DEMO_ENGINES[Math.min(DEMO_ENGINES.length - 1, Math.floor(rng() * rng() * 4))]!;
 		const startIso = new Date(start).toISOString();
 		const scope = "Ip";
 		out.push({
 			id,
+			machine_id: machine,
 			scenario: scenario.scenario,
 			kind: scenario.kind,
 			message: `Ip ${ip} performed '${scenario.scenario}'`,
@@ -181,11 +202,28 @@ export function demoHour(hour: number, now: Date): RawAlert[] {
 						},
 					]
 				: null,
-			meta: [{ key: "target_uri", value: JSON.stringify([path]) }],
-			events: [{ meta: [{ key: "target_host", value: "www.example.com" }] }],
+			meta: [
+				{ key: "target_uri", value: JSON.stringify([path]) },
+				{ key: "target_host", value: JSON.stringify(["www.example.com"]) },
+			],
+			events: Array.from({ length: Math.min(3, 1 + Math.floor(rng() * 3)) }, (_, e) => ({
+				timestamp: new Date(start + e * 1500).toISOString(),
+				meta: [
+					{ key: "target_host", value: "www.example.com" },
+					{ key: "target_uri", value: path },
+					{ key: "http_user_agent", value: AGENTS[(id + e) % AGENTS.length]! },
+					...(scenario.kind === "waf" ? [{ key: "rule_name", value: scenario.scenario }] : []),
+				],
+			})),
 		});
 	}
 	return out;
+}
+
+/** One demo alert by id, as `GET /v1/alerts/{id}` would answer it, or null. */
+export function demoAlert(id: number, now: Date): RawAlert | null {
+	if (!Number.isSafeInteger(id) || id <= 0) return null;
+	return demoHour(Math.floor(id / PER_HOUR), now).find((alert) => alert.id === id) ?? null;
 }
 
 export function demoSource(nowOf: () => Date = () => new Date()): Source {

@@ -43,6 +43,8 @@ export interface AlertRow {
 	origin?: string;
 	/** When the alert's last decision ends, ISO 8601, as read. */
 	decisionUntil?: string;
+	/** The CrowdSec agent that raised the alert (`machine_id`). Absent on rows stored by 0.1.0. */
+	machine?: string;
 }
 
 /**
@@ -68,6 +70,8 @@ export interface DayRow {
 	asNames: Record<string, number>;
 	paths: Record<string, number>;
 	ips: Record<string, number>;
+	/** Alerts by the agent that raised them. Absent on days counted by 0.1.0. */
+	machines?: Record<string, number>;
 	seen: Array<[number, number]>;
 	updatedAt: string;
 }
@@ -164,6 +168,7 @@ export function compactAlert(raw: RawAlert, fetchedAt: Date, zone: string): Aler
 		decisionType: text(decisions[0]?.type),
 		origin: text(decisions[0]?.origin),
 		...(until !== undefined && { decisionUntil: new Date(until).toISOString() }),
+		...(text(raw.machine_id) && { machine: text(raw.machine_id) }),
 	};
 }
 
@@ -269,6 +274,7 @@ export function countInto(day: DayRow, alert: AlertRow): boolean {
 	bump(day.asNames, alert.asName);
 	bump(day.paths, alert.path);
 	bump(day.ips, alert.ip);
+	if (alert.machine) bump((day.machines ??= {}), alert.machine);
 	return true;
 }
 
@@ -291,26 +297,6 @@ export function isBlocklistRow(row: Pick<AlertRow, "origin" | "scope" | "ip" | "
 	return !row.ip && (row.decisions ?? 0) > 1;
 }
 
-/** Take a counted alert back out of its day: the totals and top lists, never its id, so it is not counted again. */
-export function uncountFrom(day: DayRow, alert: AlertRow): boolean {
-	if (alert.day !== day.date || !seenHas(day.seen, alert.id)) return false;
-	day.alerts = Math.max(0, day.alerts - 1);
-	day[alert.kind] = Math.max(0, day[alert.kind] - 1);
-	day.decisions = Math.max(0, day.decisions - (alert.decisions ?? 0));
-	day.bans = Math.max(0, day.bans - (alert.bans ?? 0));
-	for (const [map, key] of [
-		[day.scenarios, alert.scenario],
-		[day.countries, alert.country],
-		[day.asNames, alert.asName],
-		[day.paths, alert.path],
-		[day.ips, alert.ip],
-	] as const) {
-		if (!key || map[key] === undefined) continue;
-		if (map[key] <= 1) delete map[key];
-		else map[key]--;
-	}
-	return true;
-}
 
 /** Keep each top list of a day to its `DAY_TOP_KEEP` largest values. */
 export function trimDay(day: DayRow): DayRow {
@@ -321,6 +307,7 @@ export function trimDay(day: DayRow): DayRow {
 		asNames: topOf(day.asNames, DAY_TOP_KEEP),
 		paths: topOf(day.paths, DAY_TOP_KEEP),
 		ips: topOf(day.ips, DAY_TOP_KEEP),
+		...(day.machines && { machines: topOf(day.machines, DAY_TOP_KEEP) }),
 	};
 }
 
